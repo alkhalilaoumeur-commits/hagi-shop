@@ -44,9 +44,8 @@ export default function NeuesProduktPage() {
     setLoading(true);
     setError(null);
 
-    const adminPw = sessionStorage.getItem("adminPw") ?? prompt("Admin-Passwort:");
-    if (!adminPw) { setLoading(false); return; }
-    sessionStorage.setItem("adminPw", adminPw);
+    const adminPw = sessionStorage.getItem("adminPw");
+    if (!adminPw) { router.push("/admin/login"); return; }
 
     const payload = {
       name: form.name,

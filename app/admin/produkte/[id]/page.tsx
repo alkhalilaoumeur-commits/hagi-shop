@@ -57,9 +57,7 @@ export default function ProduktBearbeitenPage() {
 
   useEffect(() => {
     if (!adminPw) {
-      const pw = prompt("Admin-Passwort:");
-      if (pw) sessionStorage.setItem("adminPw", pw);
-      window.location.reload();
+      router.push("/admin/login");
       return;
     }
 

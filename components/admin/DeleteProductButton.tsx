@@ -9,15 +9,15 @@ export function DeleteProductButton({ productId, productName }: { productId: str
   const router = useRouter();
 
   const handleDelete = async () => {
-    const adminPw = sessionStorage.getItem("adminPw") ?? prompt("Admin-Passwort:");
-    if (!adminPw) return;
-    sessionStorage.setItem("adminPw", adminPw);
+    const adminPw = sessionStorage.getItem("adminPw");
+    if (!adminPw) { router.push("/admin/login"); return; }
 
     setDeleting(true);
-    await fetch(`/api/admin/produkte/${productId}`, {
+    const res = await fetch(`/api/admin/produkte/${productId}`, {
       method: "DELETE",
       headers: { "x-admin-password": adminPw },
     });
+    if (res.status === 401) { router.push("/admin/login"); return; }
     router.refresh();
   };
 
