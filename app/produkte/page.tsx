@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { ProductCard } from "@/components/shop/ProductCard";
+import { SearchInput } from "@/components/shop/SearchInput";
 import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -10,11 +11,22 @@ export const metadata = {
     "Unsere Kollektion handgeknüpfter Teppiche: Oriental, Modern, Kelim. Direkt vom Importeur in Stuttgart.",
 };
 
-async function getProducts(kategorie?: string) {
+async function getProducts(kategorie?: string, suche?: string) {
   return prisma.product.findMany({
     where: {
       inStock: true,
       ...(kategorie ? { category: { slug: kategorie } } : {}),
+      ...(suche
+        ? {
+            OR: [
+              { name: { contains: suche, mode: "insensitive" } },
+              { origin: { contains: suche, mode: "insensitive" } },
+              { material: { contains: suche, mode: "insensitive" } },
+              { pattern: { contains: suche, mode: "insensitive" } },
+              { description: { contains: suche, mode: "insensitive" } },
+            ],
+          }
+        : {}),
     },
     include: { category: true },
     orderBy: { createdAt: "desc" },
@@ -28,11 +40,11 @@ async function getCategories() {
 export default async function ProduktePage({
   searchParams,
 }: {
-  searchParams: Promise<{ kategorie?: string; sortBy?: string }>;
+  searchParams: Promise<{ kategorie?: string; sortBy?: string; suche?: string }>;
 }) {
-  const { kategorie, sortBy } = await searchParams;
+  const { kategorie, sortBy, suche } = await searchParams;
   const [products, categories] = await Promise.all([
-    getProducts(kategorie),
+    getProducts(kategorie, suche),
     getCategories(),
   ]);
 
@@ -51,7 +63,14 @@ export default async function ProduktePage({
             ? categories.find((c) => c.slug === kategorie)?.name ?? "Kollektion"
             : "Alle Teppiche"}
         </h1>
-        <p className="text-muted">{sorted.length} Artikel</p>
+        <p className="text-muted">
+        {sorted.length} Artikel{suche ? ` für „${suche}"` : ""}
+      </p>
+      </div>
+
+      {/* Suche */}
+      <div className="mb-6">
+        <SearchInput defaultValue={suche} />
       </div>
 
       {/* Filter + Sortierung */}
@@ -110,7 +129,16 @@ export default async function ProduktePage({
       {sorted.length === 0 ? (
         <div className="text-center py-24 text-muted">
           <p className="font-serif text-2xl mb-2">Keine Teppiche gefunden</p>
-          <p className="text-sm">Probiere eine andere Kategorie.</p>
+          <p className="text-sm">
+            {suche
+              ? `Keine Ergebnisse für „${suche}". Probiere einen anderen Suchbegriff.`
+              : "Probiere eine andere Kategorie."}
+          </p>
+          {suche && (
+            <a href="/produkte" className="text-sm text-gold hover:underline mt-3 inline-block">
+              Alle Teppiche zeigen →
+            </a>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
