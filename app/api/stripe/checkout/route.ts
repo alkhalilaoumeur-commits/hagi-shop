@@ -37,6 +37,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Server-Side: Adressfelder bei Versand prüfen
+    if (data.deliveryType === "SHIPPING" && (!data.shippingStreet || !data.shippingCity || !data.shippingZip)) {
+      return NextResponse.json(
+        { error: "Lieferadresse unvollständig." },
+        { status: 400 }
+      );
+    }
+
     // Versandkosten
     const shippingCost = data.deliveryType === "SHIPPING" ? 995 : 0; // 9,95 € Versand
 

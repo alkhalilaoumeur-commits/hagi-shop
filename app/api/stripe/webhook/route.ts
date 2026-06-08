@@ -27,6 +27,15 @@ export async function POST(req: NextRequest) {
     const meta = session.metadata ?? {};
 
     try {
+      // Idempotenz: Bestellung schon verarbeitet?
+      const existing = await prisma.order.findUnique({
+        where: { stripeSessionId: session.id },
+      });
+      if (existing) {
+        console.log(`[webhook] Bereits verarbeitet: ${session.id}`);
+        return NextResponse.json({ received: true });
+      }
+
       const rawItems: Array<{ productId: string; quantity: number }> = JSON.parse(
         meta.itemsJson ?? "[]"
       );
