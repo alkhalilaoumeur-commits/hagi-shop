@@ -5,6 +5,7 @@ import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { formatPrice } from "@/lib/format";
 import { ClearCartOnSuccess } from "@/components/shop/ClearCartOnSuccess";
+import { CONTACT_EMAIL } from "@/lib/shop-config";
 
 interface Props {
   searchParams: Promise<{ session_id?: string }>;
@@ -101,8 +102,8 @@ export default async function BestellungBestaetigtPage({ searchParams }: Props) 
         <p>Wir bereiten Ihre Teppiche sorgfältig für den Versand vor.</p>
         <p>
           Fragen?{" "}
-          <a href="mailto:kontakt@hagi-shop.de" className="text-gold hover:underline">
-            kontakt@hagi-shop.de
+          <a href={`mailto:${CONTACT_EMAIL}`} className="text-gold hover:underline">
+            {CONTACT_EMAIL}
           </a>
         </p>
       </div>

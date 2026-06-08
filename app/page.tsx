@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ProductCard } from "@/components/shop/ProductCard";
 import prisma from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300; // 5 Minuten Cache — Startseite ändert sich selten
 
 async function getFeaturedProducts() {
   return prisma.product.findMany({
