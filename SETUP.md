@@ -80,27 +80,55 @@ npm run db:studio
 
 ---
 
-## Deploy auf Coolify (Hetzner)
+## Deploy auf Coolify (Hetzner) — mit Dockerfile
 
-1. **Neuer Stack** in Coolify: GitHub-Repo verbinden
-2. **PostgreSQL** Service hinzufügen
-3. **ENV-Variablen** eintragen (aus .env.example)
-4. **Build-Befehl**: `npm run build`
-5. **Start-Befehl**: `npm start`
-6. **Port**: 3000
+```bash
+# Coolify Dashboard → New Application → Dockerfile-Modus
+
+# ENV-Variablen (alle pflicht):
+DATABASE_URL=postgresql://user:password@db:5432/hagi_shop
+STRIPE_SECRET_KEY=sk_live_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+NEXT_PUBLIC_APP_URL=https://hagi-shop.de
+RESEND_API_KEY=re_...
+RESEND_FROM=Hagi Teppiche <bestellungen@hagi-shop.de>
+ADMIN_PASSWORD=sicheres_passwort_hier_eintragen
+
+# Nach dem ersten Deploy — DB-Schema anlegen:
+npx prisma db push
+
+# Optional: Beispiel-Daten laden
+npm run db:seed
+```
+
+**Stripe-Webhook**: `https://hagi-shop.de/api/stripe/webhook` → Event: `checkout.session.completed`
 
 ---
 
-## Noch zu erledigen (vor Launch)
+## Was Code-seitig fertig ist ✅
 
-- [ ] Hagis Firmendaten in `/impressum/page.tsx` eintragen
-- [ ] Datenschutzerklärung (`/datenschutz`) mit echten Daten füllen
-- [ ] AGB (`/agb`) schreiben (Lieferbedingungen, Zahlungsbedingungen)
-- [ ] `/ueber-uns` mit Hagis Geschichte füllen
-- [ ] `/kontakt` mit echter Adresse + Maps-Link
-- [ ] Echte Produktbilder (Hagi liefert) → in /public/images/ hochladen oder Cloudinary
-- [ ] Domain registrieren + DNS auf Hetzner-IP setzen
-- [ ] Resend: Domain verifizieren → E-Mail-Versand live
+- Alle Seiten gebaut und TypeScript-sauber (`npx tsc --noEmit`)
+- `npm run build`: 0 Fehler, 25 Seiten generiert
+- Shop-Flow: Homepage → Produkte → Produktseite → Warenkorb → Checkout → Stripe → Bestätigung
+- Admin-Panel: Login, Dashboard, Produkte (Liste/Neu/Bearbeiten), Bestellungen mit Status-Update
+- API: Products, Categories, Checkout, Webhook, Admin-Bestellungen
+- SEO: sitemap.ts, robots.ts, OG-Metadata auf allen wichtigen Seiten
+- Security: CSP-Header, X-Frame-Options, X-Content-Type-Options in next.config.mjs
+- Docker: Dockerfile + .dockerignore für Coolify-Deploy
+
+## Noch zu erledigen (vor Launch) — benötigt Hagi
+
+- [ ] Hagis Firmendaten in `/impressum/page.tsx` eintragen (Name, Adresse, USt-IdNr.)
+- [ ] Datenschutzerklärung (`/datenschutz`) mit echtem Firmennamen füllen
+- [ ] AGB (`/agb`) — ggf. Anwalt prüfen lassen
+- [ ] `/ueber-uns` mit Hagis Geschichte + Fotos füllen
+- [ ] `/kontakt` mit echter Adresse + Telefonnummer
+- [ ] Echte Produktbilder → Cloudinary hochladen, URLs in Admin eintragen
+- [ ] Domain registrieren + DNS auf Server-IP setzen
+- [ ] Resend: Domain `hagi-shop.de` verifizieren → E-Mail-Versand live
+- [ ] ADMIN_PASSWORD sicher wählen + in Coolify hinterlegen
+- [ ] MwSt-Status klären (Frage 8 unten)
 
 ---
 
