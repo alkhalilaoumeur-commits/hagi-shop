@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { VAT_NOTICE, CONTACT_EMAIL, SHOP_NAME } from "./shop-config";
 
 let _resend: Resend | null = null;
 
@@ -47,11 +48,11 @@ export async function sendOrderConfirmation(opts: {
           </tr>
         </table>
         <p style="color:#7A6E65;font-size:14px;margin-top:24px">
-          Bei Fragen: <a href="mailto:kontakt@hagi-shop.de" style="color:#8B6914">kontakt@hagi-shop.de</a>
+          Bei Fragen: <a href="mailto:${CONTACT_EMAIL}" style="color:#8B6914">${CONTACT_EMAIL}</a>
         </p>
         <p style="color:#7A6E65;font-size:12px">
-          Hagi Teppiche · Stuttgart<br>
-          Alle Preise inkl. 19% MwSt.
+          ${SHOP_NAME} · Stuttgart<br>
+          ${VAT_NOTICE}
         </p>
       </div>
     `,
