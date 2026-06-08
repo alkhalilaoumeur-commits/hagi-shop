@@ -42,7 +42,15 @@ export async function POST(req: NextRequest) {
 
     // Stripe Checkout Session erstellen
     const stripe = getStripe();
-    const lineItems = data.items.map((item) => {
+    type LineItem = {
+      price_data: {
+        currency: string;
+        product_data: { name: string; images: string[]; metadata?: Record<string, string> };
+        unit_amount: number;
+      };
+      quantity: number;
+    };
+    const lineItems: LineItem[] = data.items.map((item) => {
       const product = products.find((p) => p.id === item.productId)!;
       return {
         price_data: {
@@ -62,7 +70,7 @@ export async function POST(req: NextRequest) {
       lineItems.push({
         price_data: {
           currency: "eur",
-          product_data: { name: "Versandkosten", images: [], metadata: {} },
+          product_data: { name: "Versandkosten", images: [] },
           unit_amount: shippingCost,
         },
         quantity: 1,

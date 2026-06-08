@@ -21,7 +21,7 @@ export function AddToCartButton({ product, inStock }: Props) {
 
   const handleAdd = () => {
     if (!inStock) return;
-    add(product);
+    add({ productId: product.id, name: product.name, price: product.price, image: product.image, slug: product.slug });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
