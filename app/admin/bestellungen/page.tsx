@@ -23,6 +23,8 @@ interface Order {
   status: "PENDING" | "PAID" | "SHIPPED" | "DELIVERED" | "CANCELLED";
   totalAmount: number;
   createdAt: string;
+  trackingNumber: string | null;
+  adminNote: string | null;
   items: OrderItem[];
 }
 
@@ -49,6 +51,8 @@ export default function AdminBestellungenPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>({});
+  const [noteInputs, setNoteInputs] = useState<Record<string, string>>({});
 
   const adminPw =
     typeof window !== "undefined" ? sessionStorage.getItem("adminPw") ?? "" : "";
@@ -59,7 +63,17 @@ export default function AdminBestellungenPage() {
     });
     if (res.ok) {
       const data = await res.json();
-      setOrders(data.orders ?? []);
+      const loaded: Order[] = data.orders ?? [];
+      setOrders(loaded);
+      // Inputs mit gespeicherten Werten vorbelegen
+      const tracking: Record<string, string> = {};
+      const notes: Record<string, string> = {};
+      loaded.forEach((o) => {
+        tracking[o.id] = o.trackingNumber ?? "";
+        notes[o.id] = o.adminNote ?? "";
+      });
+      setTrackingInputs(tracking);
+      setNoteInputs(notes);
     }
     setLoading(false);
   }, [adminPw]);
@@ -78,11 +92,30 @@ export default function AdminBestellungenPage() {
     setUpdating(orderId);
     await fetch("/api/admin/bestellungen", {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "x-admin-password": adminPw,
-      },
+      headers: { "Content-Type": "application/json", "x-admin-password": adminPw },
       body: JSON.stringify({ id: orderId, status }),
+    });
+    await loadOrders();
+    setUpdating(null);
+  };
+
+  const saveTracking = async (orderId: string) => {
+    setUpdating(orderId);
+    await fetch("/api/admin/bestellungen", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-password": adminPw },
+      body: JSON.stringify({ id: orderId, trackingNumber: trackingInputs[orderId] ?? "" }),
+    });
+    await loadOrders();
+    setUpdating(null);
+  };
+
+  const saveNote = async (orderId: string) => {
+    setUpdating(orderId);
+    await fetch("/api/admin/bestellungen", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-password": adminPw },
+      body: JSON.stringify({ id: orderId, adminNote: noteInputs[orderId] ?? "" }),
     });
     await loadOrders();
     setUpdating(null);
@@ -151,7 +184,7 @@ export default function AdminBestellungenPage() {
 
                 {/* Detail-Klappe */}
                 {expanded === order.id && (
-                  <div className="border-t border-border px-4 py-4 bg-surface space-y-4">
+                  <div className="border-t border-border px-4 py-4 bg-surface space-y-5">
                     {/* Positionen */}
                     <div>
                       <p className="text-xs text-muted uppercase tracking-wider mb-2">Positionen</p>
@@ -181,6 +214,50 @@ export default function AdminBestellungenPage() {
                       {order.customerPhone && (
                         <p className="text-xs text-muted mt-1">Tel: {order.customerPhone}</p>
                       )}
+                    </div>
+
+                    {/* Tracking-Nummer */}
+                    {order.deliveryType === "SHIPPING" && (
+                      <div>
+                        <p className="text-xs text-muted uppercase tracking-wider mb-2">Sendungsverfolgung</p>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={trackingInputs[order.id] ?? ""}
+                            onChange={(e) => setTrackingInputs({ ...trackingInputs, [order.id]: e.target.value })}
+                            placeholder="DHL/DPD Sendungsnummer"
+                            className="flex-1 border border-border px-3 py-1.5 text-sm focus:border-gold outline-none"
+                          />
+                          <button
+                            onClick={() => saveTracking(order.id)}
+                            disabled={updating === order.id}
+                            className="text-xs px-3 py-1.5 bg-ink text-bg hover:bg-ink/90 disabled:opacity-50"
+                          >
+                            {updating === order.id ? "…" : "Speichern"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Interne Notiz */}
+                    <div>
+                      <p className="text-xs text-muted uppercase tracking-wider mb-2">Interne Notiz</p>
+                      <div className="flex gap-2">
+                        <textarea
+                          rows={2}
+                          value={noteInputs[order.id] ?? ""}
+                          onChange={(e) => setNoteInputs({ ...noteInputs, [order.id]: e.target.value })}
+                          placeholder="z.B. Telefonat mit Kunde, besondere Verpackung…"
+                          className="flex-1 border border-border px-3 py-1.5 text-sm focus:border-gold outline-none resize-none"
+                        />
+                        <button
+                          onClick={() => saveNote(order.id)}
+                          disabled={updating === order.id}
+                          className="text-xs px-3 py-1.5 bg-ink text-bg hover:bg-ink/90 disabled:opacity-50 self-start"
+                        >
+                          {updating === order.id ? "…" : "Speichern"}
+                        </button>
+                      </div>
                     </div>
 
                     {/* Status ändern */}

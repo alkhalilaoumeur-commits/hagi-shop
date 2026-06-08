@@ -65,6 +65,10 @@ model Order {
   status            OrderStatus @default(PENDING)
   totalAmount       Int         // Gesamtbetrag in Cent
 
+  // Admin-Felder
+  trackingNumber    String?     // DHL/DPD Sendungsnummer
+  adminNote         String?     // Interne Notiz für Admin
+
   items             OrderItem[]
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
