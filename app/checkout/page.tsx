@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/cart-store";
 import { formatPrice } from "@/lib/format";
+import { VAT_NOTICE } from "@/lib/shop-config";
 
 type DeliveryType = "SHIPPING" | "PICKUP";
 
@@ -220,7 +221,7 @@ export default function CheckoutPage() {
               <span>Gesamt</span>
               <span className="text-gold">{formatPrice(grandTotal)}</span>
             </div>
-            <p className="text-xs text-muted mb-6">inkl. 19% MwSt.</p>
+            <p className="text-xs text-muted mb-6">{VAT_NOTICE}</p>
 
             {error && (
               <p className="text-sm text-signal bg-signal/10 px-3 py-2 mb-4">{error}</p>

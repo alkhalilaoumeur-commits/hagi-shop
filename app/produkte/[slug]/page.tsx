@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import prisma from "@/lib/prisma";
 import { formatPrice } from "@/lib/format";
+import { VAT_NOTICE } from "@/lib/shop-config";
 import { AddToCartButton } from "@/components/shop/AddToCartButton";
 import { ProductImageGallery } from "@/components/shop/ProductImageGallery";
 import { ProductCard } from "@/components/shop/ProductCard";
@@ -158,7 +159,7 @@ export default async function ProductDetailPage({ params }: Props) {
               </>
             )}
           </div>
-          <p className="text-xs text-muted mb-6">Alle Preise inkl. 19% MwSt.</p>
+          <p className="text-xs text-muted mb-6">{VAT_NOTICE}</p>
 
           {/* Spezifikationen */}
           <div className="grid grid-cols-2 gap-3 mb-6 text-sm">

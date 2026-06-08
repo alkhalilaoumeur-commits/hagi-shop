@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Trash2, Minus, Plus } from "lucide-react";
 import { useCart } from "@/lib/cart-store";
 import { formatPrice } from "@/lib/format";
+import { VAT_NOTICE, SHIPPING_COST_CENTS, SHIPPING_COST_DISPLAY } from "@/lib/shop-config";
 
 export default function WarenkorbPage() {
   const { items, remove, updateQty, total, clear } = useCart();
@@ -95,16 +96,16 @@ export default function WarenkorbPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted">Versand</span>
-                <span className="text-ink">9,95 €</span>
+                <span className="text-ink">{SHIPPING_COST_DISPLAY}</span>
               </div>
               <p className="text-xs text-muted">oder kostenlose Selbstabholung in Stuttgart</p>
             </div>
 
             <div className="flex justify-between font-semibold mb-6">
               <span>Gesamtbetrag</span>
-              <span className="text-gold">{formatPrice(total() + 995)}</span>
+              <span className="text-gold">{formatPrice(total() + SHIPPING_COST_CENTS)}</span>
             </div>
-            <p className="text-xs text-muted mb-4">Alle Preise inkl. 19% MwSt.</p>
+            <p className="text-xs text-muted mb-4">{VAT_NOTICE}</p>
 
             <Link
               href="/checkout"
