@@ -25,6 +25,7 @@ interface CartStore {
 export const useCart = create<CartStore>()(
   persist(
     (set, get) => ({
+
       items: [],
 
       add: (item) =>
@@ -59,6 +60,14 @@ export const useCart = create<CartStore>()(
 
       count: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
     }),
-    { name: "hagi-cart" }
+    {
+      name: "hagi-cart",
+      skipHydration: true,
+    }
   )
 );
+
+// Rehydration nach Mount — verhindert SSR-Hydration-Mismatch
+if (typeof window !== "undefined") {
+  useCart.persist.rehydrate();
+}
