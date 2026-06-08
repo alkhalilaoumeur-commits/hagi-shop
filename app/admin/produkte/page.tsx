@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import prisma from "@/lib/prisma";
 import { formatPrice } from "@/lib/format";
+import { DeleteProductButton } from "@/components/admin/DeleteProductButton";
 
 export default async function AdminProduktListePage() {
   await requireAdminAuth();
@@ -78,7 +79,7 @@ export default async function AdminProduktListePage() {
               </div>
 
               {/* Aktionen */}
-              <div className="flex gap-2 flex-shrink-0">
+              <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
                 <Link
                   href={`/admin/produkte/${product.id}`}
                   className="text-xs text-muted hover:text-ink border border-border px-2 py-1"
@@ -92,6 +93,7 @@ export default async function AdminProduktListePage() {
                 >
                   Ansehen
                 </Link>
+                <DeleteProductButton productId={product.id} productName={product.name} />
               </div>
             </div>
           ))}
