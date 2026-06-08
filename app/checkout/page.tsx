@@ -227,6 +227,14 @@ export default function CheckoutPage() {
               <p className="text-sm text-signal bg-signal/10 px-3 py-2 mb-4">{error}</p>
             )}
 
+            <p className="text-xs text-muted mb-3 leading-relaxed">
+              Mit der Bestellung akzeptieren Sie unsere{" "}
+              <a href="/agb" target="_blank" className="text-gold hover:underline">AGB</a>{" "}
+              und bestätigen, dass Sie die{" "}
+              <a href="/datenschutz" target="_blank" className="text-gold hover:underline">Datenschutzerklärung</a>{" "}
+              gelesen haben.
+            </p>
+
             <button
               type="submit"
               disabled={loading}
