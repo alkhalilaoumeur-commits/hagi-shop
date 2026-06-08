@@ -54,31 +54,56 @@ export default async function ProduktePage({
         <p className="text-muted">{sorted.length} Artikel</p>
       </div>
 
-      {/* Kategorien-Filter */}
-      <div className="flex flex-wrap gap-2 mb-8">
-        <a
-          href="/produkte"
-          className={`px-4 py-2 text-sm border transition-colors ${
-            !kategorie
-              ? "border-ink bg-ink text-bg"
-              : "border-border text-muted hover:border-gold hover:text-gold"
-          }`}
-        >
-          Alle
-        </a>
-        {categories.map((cat) => (
+      {/* Filter + Sortierung */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+        {/* Kategorien-Filter */}
+        <div className="flex flex-wrap gap-2">
           <a
-            key={cat.slug}
-            href={`/produkte?kategorie=${cat.slug}`}
+            href={sortBy ? `/produkte?sortBy=${sortBy}` : "/produkte"}
             className={`px-4 py-2 text-sm border transition-colors ${
-              kategorie === cat.slug
+              !kategorie
                 ? "border-ink bg-ink text-bg"
                 : "border-border text-muted hover:border-gold hover:text-gold"
             }`}
           >
-            {cat.name}
+            Alle
           </a>
-        ))}
+          {categories.map((cat) => (
+            <a
+              key={cat.slug}
+              href={`/produkte?kategorie=${cat.slug}${sortBy ? `&sortBy=${sortBy}` : ""}`}
+              className={`px-4 py-2 text-sm border transition-colors ${
+                kategorie === cat.slug
+                  ? "border-ink bg-ink text-bg"
+                  : "border-border text-muted hover:border-gold hover:text-gold"
+              }`}
+            >
+              {cat.name}
+            </a>
+          ))}
+        </div>
+
+        {/* Sortierung */}
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted">Sortieren:</span>
+          {[
+            { value: "", label: "Neueste" },
+            { value: "preis-asc", label: "Preis ↑" },
+            { value: "preis-desc", label: "Preis ↓" },
+          ].map((opt) => (
+            <a
+              key={opt.value}
+              href={`/produkte?${kategorie ? `kategorie=${kategorie}&` : ""}${opt.value ? `sortBy=${opt.value}` : ""}`}
+              className={`px-3 py-1.5 border text-xs transition-colors ${
+                sortBy === opt.value || (!sortBy && !opt.value)
+                  ? "border-gold text-gold"
+                  : "border-border text-muted hover:text-ink hover:border-ink"
+              }`}
+            >
+              {opt.label}
+            </a>
+          ))}
+        </div>
       </div>
 
       {/* Produkte-Grid */}

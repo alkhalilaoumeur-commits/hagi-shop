@@ -66,8 +66,56 @@ export default async function ProductDetailPage({ params }: Props) {
     ? Math.round((1 - product.price / product.comparePrice) * 100)
     : null;
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://hagi-shop.de";
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Product",
+        name: product.name,
+        description: product.description ?? undefined,
+        image: product.images,
+        sku: product.id,
+        brand: { "@type": "Brand", name: "Hagi Teppiche" },
+        offers: {
+          "@type": "Offer",
+          priceCurrency: "EUR",
+          price: (product.price / 100).toFixed(2),
+          availability: product.inStock
+            ? "https://schema.org/InStock"
+            : "https://schema.org/OutOfStock",
+          itemCondition: "https://schema.org/UsedCondition",
+          url: `${appUrl}/produkte/${product.slug}`,
+          seller: { "@type": "Organization", name: "Hagi Teppiche" },
+        },
+        additionalProperty: [
+          product.material && { "@type": "PropertyValue", name: "Material", value: product.material },
+          product.origin && { "@type": "PropertyValue", name: "Herkunftsland", value: product.origin },
+          product.sizeWidth && product.sizeLength && {
+            "@type": "PropertyValue", name: "Maße",
+            value: `${product.sizeWidth} × ${product.sizeLength} cm`,
+          },
+          product.pattern && { "@type": "PropertyValue", name: "Muster", value: product.pattern },
+        ].filter(Boolean),
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: appUrl },
+          { "@type": "ListItem", position: 2, name: "Kollektion", item: `${appUrl}/produkte` },
+          { "@type": "ListItem", position: 3, name: product.category.name, item: `${appUrl}/produkte?kategorie=${product.category.slug}` },
+          { "@type": "ListItem", position: 4, name: product.name, item: `${appUrl}/produkte/${product.slug}` },
+        ],
+      },
+    ],
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Breadcrumb */}
       <nav className="text-xs text-muted mb-8 flex gap-2 items-center">
         <a href="/" className="hover:text-gold transition-colors">Home</a>
