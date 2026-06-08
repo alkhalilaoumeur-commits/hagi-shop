@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { VAT_NOTICE } from "@/lib/shop-config";
 
 export function Footer() {
   return (
@@ -40,7 +41,7 @@ export function Footer() {
       <div className="border-t border-border">
         <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-2 text-xs text-muted">
           <span>© {new Date().getFullYear()} Hagi Teppiche · Stuttgart</span>
-          <span>Alle Preise inkl. 19% MwSt. · Versand oder Selbstabholung</span>
+          <span>{VAT_NOTICE} · Versand oder Selbstabholung</span>
         </div>
       </div>
     </footer>
