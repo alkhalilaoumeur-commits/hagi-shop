@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatPrice } from "@/lib/format";
 
@@ -47,6 +48,7 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUS_FLOW = ["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
 
 export default function AdminBestellungenPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -61,11 +63,14 @@ export default function AdminBestellungenPage() {
     const res = await fetch("/api/admin/bestellungen", {
       headers: { "x-admin-password": adminPw },
     });
+    if (res.status === 401) {
+      router.push("/admin/login");
+      return;
+    }
     if (res.ok) {
       const data = await res.json();
       const loaded: Order[] = data.orders ?? [];
       setOrders(loaded);
-      // Inputs mit gespeicherten Werten vorbelegen
       const tracking: Record<string, string> = {};
       const notes: Record<string, string> = {};
       loaded.forEach((o) => {
@@ -76,17 +81,15 @@ export default function AdminBestellungenPage() {
       setNoteInputs(notes);
     }
     setLoading(false);
-  }, [adminPw]);
+  }, [adminPw, router]);
 
   useEffect(() => {
     if (!adminPw) {
-      const pw = prompt("Admin-Passwort:");
-      if (pw) sessionStorage.setItem("adminPw", pw);
-      window.location.reload();
+      router.push("/admin/login");
       return;
     }
     loadOrders();
-  }, [adminPw, loadOrders]);
+  }, [adminPw, loadOrders, router]);
 
   const updateStatus = async (orderId: string, status: string) => {
     setUpdating(orderId);
