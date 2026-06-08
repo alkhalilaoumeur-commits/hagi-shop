@@ -2,6 +2,7 @@ import { CheckCircle } from "lucide-react";
 import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { formatPrice } from "@/lib/format";
+import { ClearCartOnSuccess } from "@/components/shop/ClearCartOnSuccess";
 
 interface Props {
   searchParams: Promise<{ session_id?: string }>;
@@ -24,6 +25,7 @@ export default async function BestellungBestaetigtPage({ searchParams }: Props) 
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-16">
+      <ClearCartOnSuccess />
       {/* Erfolgs-Header */}
       <div className="text-center mb-10">
         <div className="w-16 h-16 bg-green/10 rounded-full flex items-center justify-center mx-auto mb-6">

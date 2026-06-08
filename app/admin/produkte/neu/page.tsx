@@ -180,13 +180,44 @@ export default function NeuesProduktPage() {
             ))}
           </div>
 
-          {/* Bild-URL */}
+          {/* Bild-URLs (mehrere) */}
           <div>
-            <label className="text-sm text-muted block mb-1">Bild-URL</label>
-            <input type="url" value={form.images[0]} onChange={(e) => setForm((p) => ({ ...p, images: [e.target.value] }))}
-              className="w-full border border-border px-3 py-2.5 text-sm focus:border-gold outline-none"
-              placeholder="https://res.cloudinary.com/..." />
-            <p className="text-xs text-muted mt-1">Cloudinary-URL oder direkter Link</p>
+            <label className="text-sm text-muted block mb-1">Bild-URLs</label>
+            {form.images.map((img, idx) => (
+              <div key={idx} className="flex gap-2 mb-2">
+                <input
+                  type="url"
+                  value={img}
+                  onChange={(e) => {
+                    const updated = [...form.images];
+                    updated[idx] = e.target.value;
+                    setForm((p) => ({ ...p, images: updated }));
+                  }}
+                  className="flex-1 border border-border px-3 py-2 text-sm focus:border-gold outline-none"
+                  placeholder={idx === 0 ? "Hauptbild (https://res.cloudinary.com/...)" : `Zusatzbild ${idx + 1}`}
+                />
+                {form.images.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setForm((p) => ({ ...p, images: p.images.filter((_, i) => i !== idx) }))}
+                    className="px-2 py-1 text-sm text-signal hover:bg-signal/10 border border-border"
+                    title="Entfernen"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+            {form.images.length < 5 && (
+              <button
+                type="button"
+                onClick={() => setForm((p) => ({ ...p, images: [...p.images, ""] }))}
+                className="text-xs text-muted hover:text-gold border border-dashed border-border px-3 py-1.5 mt-1"
+              >
+                + Weiteres Bild hinzufügen
+              </button>
+            )}
+            <p className="text-xs text-muted mt-1">Cloudinary-URLs oder direkte Links · Erstes Bild = Hauptbild</p>
           </div>
 
           {/* Checkboxen */}
