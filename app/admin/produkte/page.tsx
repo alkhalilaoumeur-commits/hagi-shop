@@ -80,6 +80,12 @@ export default async function AdminProduktListePage() {
               {/* Aktionen */}
               <div className="flex gap-2 flex-shrink-0">
                 <Link
+                  href={`/admin/produkte/${product.id}`}
+                  className="text-xs text-muted hover:text-ink border border-border px-2 py-1"
+                >
+                  Bearbeiten
+                </Link>
+                <Link
                   href={`/produkte/${product.slug}`}
                   target="_blank"
                   className="text-xs text-muted hover:text-gold border border-border px-2 py-1"
