@@ -5,16 +5,24 @@ import prisma from "@/lib/prisma";
 export const revalidate = 300; // 5 Minuten Cache — Startseite ändert sich selten
 
 async function getFeaturedProducts() {
-  return prisma.product.findMany({
-    where: { featured: true, inStock: true },
-    include: { category: true },
-    take: 6,
-    orderBy: { createdAt: "desc" },
-  });
+  try {
+    return await prisma.product.findMany({
+      where: { featured: true, inStock: true },
+      include: { category: true },
+      take: 6,
+      orderBy: { createdAt: "desc" },
+    });
+  } catch {
+    return [];
+  }
 }
 
 async function getCategories() {
-  return prisma.category.findMany({ orderBy: { name: "asc" } });
+  try {
+    return await prisma.category.findMany({ orderBy: { name: "asc" } });
+  } catch {
+    return [];
+  }
 }
 
 export default async function Home() {
