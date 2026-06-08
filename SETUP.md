@@ -109,13 +109,23 @@ npm run db:seed
 ## Was Code-seitig fertig ist ✅
 
 - Alle Seiten gebaut und TypeScript-sauber (`npx tsc --noEmit`)
-- `npm run build`: 0 Fehler, 25 Seiten generiert
-- Shop-Flow: Homepage → Produkte → Produktseite → Warenkorb → Checkout → Stripe → Bestätigung
-- Admin-Panel: Login, Dashboard, Produkte (Liste/Neu/Bearbeiten), Bestellungen mit Status-Update
-- API: Products, Categories, Checkout, Webhook, Admin-Bestellungen
-- SEO: sitemap.ts, robots.ts, OG-Metadata auf allen wichtigen Seiten
+- `npm run build`: 0 Fehler, 28 Seiten generiert
+- Shop-Flow: Homepage → Produkte + Suche + Filter → Produktseite → Warenkorb → Checkout → Stripe → Bestätigung
+- Admin-Panel: Login, Dashboard, Produkte (Liste/Neu/Bearbeiten/Löschen), Bestellungen mit Status/Tracking/Notiz
+- API: Products (CRUD), Categories, Checkout (mit Adress-Validierung), Webhook (idempotent), Health Endpoint
+- SEO: sitemap.ts, robots.ts, OG-Metadata + JSON-LD auf allen wichtigen Seiten
 - Security: CSP-Header, X-Frame-Options, X-Content-Type-Options in next.config.mjs
 - Docker: Dockerfile + .dockerignore für Coolify-Deploy
+- Shop-Config: `lib/shop-config.ts` — MwSt-Status, Versandkosten zentral konfigurierbar
+
+## ⚠️  VOR LAUNCH: MwSt-Konfiguration
+
+**Datei:** `lib/shop-config.ts` → `IS_VAT_REGISTERED`
+
+- `true` (Standard) = Hagi ist umsatzsteuerpflichtig → zeigt "inkl. 19% MwSt."
+- `false` = Hagi ist Kleinunternehmer § 19 UStG → zeigt korrekten Text ohne MwSt.
+
+**Mit Hagi klären bevor Shop live geht!** Falsche MwSt-Anzeige ist rechtlich problematisch.
 
 ## Noch zu erledigen (vor Launch) — benötigt Hagi
 
