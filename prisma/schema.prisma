@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Produktkategorie (z.B. "Oriental", "Modern", "Kelim")
+model Category {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  slug      String    @unique
+  products  Product[]
+  createdAt DateTime  @default(now())
+}
+
+// Teppich-Produkt
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String      @unique
+  description String?
+  price       Int         // Preis in Cent (z.B. 59900 = 599,00 €)
+  comparePrice Int?       // Durchgestrichener Vergleichspreis
+  images      String[]    // Array von Bild-URLs (Cloudinary oder local)
+  categoryId  String
+  category    Category    @relation(fields: [categoryId], references: [id])
+
+  // Teppich-spezifische Felder
+  sizeWidth   Float?      // Breite in cm
+  sizeLength  Float?      // Länge in cm
+  origin      String?     // Herkunftsland (z.B. "Iran", "Türkei", "Indien")
+  material    String?     // Material (z.B. "Schurwolle", "Baumwolle", "Seide")
+  pattern     String?     // Muster-Beschreibung
+
+  inStock     Boolean     @default(true)
+  featured    Boolean     @default(false) // Auf Startseite zeigen
+
+  orderItems  OrderItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+// Bestellung
+model Order {
+  id                String      @id @default(cuid())
+  stripeSessionId   String?     @unique
+  stripePaymentIntent String?
+
+  // Kundendaten
+  customerName      String
+  customerEmail     String
+  customerPhone     String?
+
+  // Lieferadresse
+  shippingStreet    String?
+  shippingCity      String?
+  shippingZip       String?
+  shippingCountry   String      @default("DE")
+  deliveryType      DeliveryType @default(SHIPPING) // SHIPPING oder PICKUP
+
+  // Bestellstatus
+  status            OrderStatus @default(PENDING)
+  totalAmount       Int         // Gesamtbetrag in Cent
+
+  items             OrderItem[]
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int      @default(1)
+  price     Int      // Preis zum Zeitpunkt der Bestellung (nicht aktuelle Preis!)
+}
+
+enum OrderStatus {
+  PENDING    // Ausstehend — noch nicht bezahlt
+  PAID       // Bezahlt — Stripe bestätigt
+  SHIPPED    // Versendet
+  DELIVERED  // Geliefert
+  CANCELLED  // Storniert
+}
+
+enum DeliveryType {
+  SHIPPING   // Versand
+  PICKUP     // Selbstabholung Stuttgart
+}
