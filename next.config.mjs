@@ -1,11 +1,10 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  output: "standalone", // Docker-optimiertes Build
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: "standalone",
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "res.cloudinary.com" },
-      { protocol: "https", hostname: "images.unsplash.com" }, // Placeholder-Bilder in Dev
+      { protocol: "https", hostname: "images.unsplash.com" },
     ],
   },
   async headers() {

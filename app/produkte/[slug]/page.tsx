@@ -28,11 +28,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export async function generateStaticParams() {
-  const products = await prisma.product.findMany({
-    select: { slug: true },
-    where: { inStock: true },
-  });
-  return products.map((p) => ({ slug: p.slug }));
+  try {
+    const products = await prisma.product.findMany({
+      select: { slug: true },
+      where: { inStock: true },
+    });
+    return products.map((p) => ({ slug: p.slug }));
+  } catch {
+    return [];
+  }
 }
 
 export const revalidate = 3600;

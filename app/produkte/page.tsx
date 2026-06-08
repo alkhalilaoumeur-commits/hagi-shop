@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { ProductCard } from "@/components/shop/ProductCard";
 import prisma from "@/lib/prisma";
 
-export const revalidate = 600;
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Kollektion — Orientalische & Moderne Teppiche",

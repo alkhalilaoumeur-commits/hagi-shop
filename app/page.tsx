@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ProductCard } from "@/components/shop/ProductCard";
 import prisma from "@/lib/prisma";
 
-export const revalidate = 3600; // ISR: stündlich aktualisieren
+export const dynamic = "force-dynamic";
 
 async function getFeaturedProducts() {
   return prisma.product.findMany({
