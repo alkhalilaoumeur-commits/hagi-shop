@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { slugify } from "@/lib/format";
-
-function checkAdminAuth(req: NextRequest): boolean {
-  const pw = req.headers.get("x-admin-password");
-  return pw === process.env.ADMIN_PASSWORD;
-}
+import { checkAdminRequest } from "@/lib/admin-auth";
 
 export async function GET() {
   const categories = await prisma.category.findMany({ orderBy: { name: "asc" } });
@@ -13,7 +9,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  if (!checkAdminAuth(req)) {
+  if (!checkAdminRequest(req)) {
     return NextResponse.json({ error: "Nicht autorisiert." }, { status: 401 });
   }
 

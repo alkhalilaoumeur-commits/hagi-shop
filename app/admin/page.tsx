@@ -3,6 +3,8 @@ import { requireAdminAuth } from "@/lib/admin-auth";
 import prisma from "@/lib/prisma";
 import { formatPrice } from "@/lib/format";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminDashboard() {
   await requireAdminAuth();
 

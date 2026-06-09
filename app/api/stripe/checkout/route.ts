@@ -9,7 +9,7 @@ const CheckoutSchema = z.object({
       productId: z.string(),
       quantity: z.number().int().min(1).max(10),
     })
-  ).min(1),
+  ).min(1).max(9), // Stripe metadata-Wert hat 500-Zeichen-Limit — 9 Items max sicher
   customerName: z.string().min(2).max(100),
   customerEmail: z.string().email(),
   customerPhone: z.string().optional(),

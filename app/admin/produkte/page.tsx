@@ -4,6 +4,8 @@ import prisma from "@/lib/prisma";
 import { formatPrice } from "@/lib/format";
 import { DeleteProductButton } from "@/components/admin/DeleteProductButton";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminProduktListePage() {
   await requireAdminAuth();
 

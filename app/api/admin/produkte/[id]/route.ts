@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { z } from "zod";
 import { slugify } from "@/lib/format";
-
-function checkAdminAuth(req: NextRequest): boolean {
-  const pw = req.headers.get("x-admin-password");
-  return pw === process.env.ADMIN_PASSWORD;
-}
+import { checkAdminRequest } from "@/lib/admin-auth";
 
 const UpdateSchema = z.object({
   name: z.string().min(2).max(200).optional(),
@@ -28,7 +24,7 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!checkAdminAuth(req)) {
+  if (!checkAdminRequest(req)) {
     return NextResponse.json({ error: "Nicht autorisiert." }, { status: 401 });
   }
 
@@ -49,7 +45,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!checkAdminAuth(req)) {
+  if (!checkAdminRequest(req)) {
     return NextResponse.json({ error: "Nicht autorisiert." }, { status: 401 });
   }
 
@@ -82,7 +78,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!checkAdminAuth(req)) {
+  if (!checkAdminRequest(req)) {
     return NextResponse.json({ error: "Nicht autorisiert." }, { status: 401 });
   }
 

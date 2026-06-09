@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { z } from "zod";
 import { slugify } from "@/lib/format";
-
-function checkAdminAuth(req: NextRequest): boolean {
-  const pw = req.headers.get("x-admin-password");
-  return pw === process.env.ADMIN_PASSWORD;
-}
+import { checkAdminRequest } from "@/lib/admin-auth";
 
 const ProductSchema = z.object({
   name: z.string().min(2).max(200),
@@ -24,9 +20,8 @@ const ProductSchema = z.object({
   featured: z.boolean().default(false),
 });
 
-// GET — alle Produkte (Admin-Liste)
 export async function GET(req: NextRequest) {
-  if (!checkAdminAuth(req)) {
+  if (!checkAdminRequest(req)) {
     return NextResponse.json({ error: "Nicht autorisiert." }, { status: 401 });
   }
 
@@ -38,9 +33,8 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ products });
 }
 
-// POST — neues Produkt anlegen
 export async function POST(req: NextRequest) {
-  if (!checkAdminAuth(req)) {
+  if (!checkAdminRequest(req)) {
     return NextResponse.json({ error: "Nicht autorisiert." }, { status: 401 });
   }
 
