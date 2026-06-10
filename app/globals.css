@@ -2,38 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600&display=swap');
 
 :root {
   --font-playfair: 'Playfair Display', Georgia, serif;
-  --font-dm-sans: 'DM Sans', system-ui, sans-serif;
+  --font-inter: 'Inter', system-ui, sans-serif;
+
+  --bg:            #0B0905;
+  --bg-card:       #141009;
+  --bg-elevated:   #1D1610;
+  --gold:          #C9A553;
+  --gold-light:    #E4C87E;
+  --gold-border:   rgba(201,165,83,.25);
+  --cream:         #F0E6D0;
+  --cream-muted:   #C8B89A;
+  --muted:         #8A7A65;
+  --border:        #28211A;
+  --border-light:  #352C22;
 }
 
-* {
+*, *::before, *::after {
   box-sizing: border-box;
   padding: 0;
   margin: 0;
 }
 
-html {
-  scroll-behavior: smooth;
-}
+html { scroll-behavior: smooth; }
 
 body {
-  background: #FAF7F2;
-  color: #1A1614;
-  font-family: var(--font-dm-sans);
+  background: var(--bg);
+  color: var(--cream);
+  font-family: var(--font-inter);
+  font-size: 15px;
+  line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
-/* Schöne Fokus-Ringe */
+img { display: block; width: 100%; }
+
 :focus-visible {
-  outline: 2px solid #8B6914;
+  outline: 2px solid var(--gold);
   outline-offset: 3px;
 }
 
-/* Scrollbar (dezent) */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #FAF7F2; }
-::-webkit-scrollbar-thumb { background: #E2D9CC; border-radius: 3px; }
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold); }
