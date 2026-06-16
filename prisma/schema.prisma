@@ -595,6 +595,7 @@ model AuditLog {
   @@index([actorId])
   @@index([createdAt])
   @@index([action])
+  @@index([action, entityType, entityId, createdAt])
 }
 
 model ConsentLog {

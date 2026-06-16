@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import prisma from "@/lib/prisma";
-import { sendOrderConfirmation } from "@/lib/resend";
+import { sendOrderConfirmation } from "@/lib/email/send";
 import { recordReceive, markProcessed, markError } from "@/lib/services/webhook-dedup";
 import { releaseDiscount } from "@/lib/services/discount";
 import { logAudit } from "@/lib/services/audit";
@@ -149,15 +149,28 @@ async function handleCheckoutSessionCompleted(
   });
 
   try {
-    await sendOrderConfirmation({
-      customerEmail: updated.customerEmail,
-      customerName: `${updated.billingFirstName} ${updated.billingLastName}`.trim(),
-      orderTotal: updated.totalCents,
-      orderItems: updated.items.map((i) => ({
-        name: i.productTitle,
-        price: i.unitPriceCents,
+    await sendOrderConfirmation(updated.customerEmail, {
+      customerFirstName: updated.billingFirstName,
+      orderNumber: updated.orderNumber,
+      publicToken: updated.publicToken,
+      items: updated.items.map((i) => ({
+        title: i.productTitle,
+        sku: i.productSku,
         quantity: i.quantity,
+        unitPriceCents: i.unitPriceCents,
+        totalCents: i.subtotalCents,
+        imageUrl: i.productImageUrl,
       })),
+      subtotalCents: updated.subtotalCents,
+      shippingCents: updated.shippingCents,
+      discountCents: updated.discountCents,
+      totalCents: updated.totalCents,
+      shippingMethodName: updated.shippingMethodName ?? "Versand",
+      estimatedDeliveryRange:
+        updated.estimatedDeliveryMinDays && updated.estimatedDeliveryMaxDays
+          ? `${updated.estimatedDeliveryMinDays}–${updated.estimatedDeliveryMaxDays}`
+          : "in Kürze",
+      isPickup: updated.deliveryType === "PICKUP",
     });
   } catch (mailErr) {
     console.error("[webhook] confirmation mail failed", mailErr);
