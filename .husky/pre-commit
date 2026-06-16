@@ -1,0 +1,23 @@
+#!/usr/bin/env sh
+
+# Block commits if secrets are detected.
+# Install gitleaks via: brew install gitleaks
+
+if ! command -v gitleaks > /dev/null; then
+  echo "⚠️  gitleaks nicht installiert — überspringe Secret-Scan."
+  echo "   Installation: brew install gitleaks"
+  exit 0
+fi
+
+echo "🔍 Scanning staged changes for secrets..."
+gitleaks protect --staged --redact --no-banner
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ COMMIT BLOCKED: Secrets detected in staged changes."
+  echo "   Remove the secret, then re-stage and try again."
+  echo "   Never use git --no-verify to bypass this."
+  exit 1
+fi
+
+echo "✅ No secrets detected."
