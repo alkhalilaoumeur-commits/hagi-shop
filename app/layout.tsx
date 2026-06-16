@@ -4,6 +4,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { WhatsAppBerater } from "@/components/layout/WhatsAppBerater";
+import { CookieBanner } from "@/components/layout/CookieBanner";
 
 // TODO: Domain + Shopname nach Klärungsgespräch anpassen
 export const metadata: Metadata = {
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main>{children}</main>
         <Footer />
         <WhatsAppBerater />
+        <CookieBanner />
       </body>
     </html>
   );
