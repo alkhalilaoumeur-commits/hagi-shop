@@ -21,6 +21,7 @@ export default function AdminLoginPage() {
     });
 
     if (res.ok) {
+      sessionStorage.setItem("adminPw", password);
       router.push("/admin");
     } else {
       setError("Falsches Passwort.");

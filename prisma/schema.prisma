@@ -7,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Produktkategorie (z.B. "Oriental", "Modern", "Kelim")
 model Category {
   id        String    @id @default(cuid())
   name      String    @unique
@@ -16,83 +15,666 @@ model Category {
   createdAt DateTime  @default(now())
 }
 
-// Teppich-Produkt
 model Product {
   id          String      @id @default(cuid())
+  sku         String?     @unique
   name        String
   slug        String      @unique
-  description String?
-  price       Int         // Preis in Cent (z.B. 59900 = 599,00 €)
-  comparePrice Int?       // Durchgestrichener Vergleichspreis
-  images      String[]    // Array von Bild-URLs (Cloudinary oder local)
-  categoryId  String
-  category    Category    @relation(fields: [categoryId], references: [id])
 
-  // Teppich-spezifische Felder
-  sizeWidth   Float?      // Breite in cm
-  sizeLength  Float?      // Länge in cm
-  origin      String?     // Herkunftsland (z.B. "Iran", "Türkei", "Indien")
-  material    String?     // Material (z.B. "Schurwolle", "Baumwolle", "Seide")
-  pattern     String?     // Muster-Beschreibung
+  shortDescription String?
+  description      String?
+  storyDescription String?
 
-  inStock     Boolean     @default(true)
-  featured    Boolean     @default(false) // Auf Startseite zeigen
+  price        Int
+  comparePrice Int?
+  images       String[]
 
-  orderItems  OrderItem[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  categoryId   String
+  category     Category    @relation(fields: [categoryId], references: [id])
+
+  sizeWidth        Float?
+  sizeLength       Float?
+  shape            Shape?
+  pileHeightMm     Float?
+  weightKg         Float?
+  shippingWeightKg Float?
+
+  pileMaterial PileMaterial?
+  woolPercent  Int?
+  silkPercent  Int?
+  warpMaterial String?
+  weftMaterial String?
+  material     String?
+
+  manufacturingType      ManufacturingType?
+  knotTechnique          KnotTechnique?
+  knotsPerSqm            Int?
+  knottingDurationMonths Int?
+
+  origin        String?
+  originCountry OriginCountry?
+  originRegion  String?
+  originCity    String?
+  workshop      String?
+  weaverName    String?
+  weaverStory   String?
+  isSigned      Boolean   @default(false)
+
+  ageCategory AgeCategory?
+  yearMade    Int?
+  condition   Condition?
+
+  pattern        String?
+  patternType    PatternType[]
+  patternMotif   String[]
+  style          Style?
+  mainColor      MainColor?
+  accentColors   String[]
+
+  recommendedRoom   Room[]
+  underfloorHeating Boolean @default(false)
+  careInstructions  String?
+
+  hasCertificate  Boolean  @default(false)
+  certificateType String[]
+
+  isUnique       Boolean   @default(true)
+  tags           String[]
+  seoTitle       String?
+  seoDescription String?
+
+  inStock  Boolean @default(true)
+  featured Boolean @default(false)
+
+  orderItems OrderItem[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([inStock])
+  @@index([featured])
+  @@index([categoryId])
 }
 
-// Bestellung
+enum Shape {
+  RECHTECKIG
+  QUADRATISCH
+  RUND
+  OVAL
+  LAEUFER
+}
+
+enum PileMaterial {
+  SCHURWOLLE
+  HOCHLANDWOLLE
+  SEIDE
+  BAMBUSSEIDE
+  BAUMWOLLE
+  MIX_WOLLE_SEIDE
+  VISKOSE
+  SYNTHETIK
+}
+
+enum ManufacturingType {
+  HANDGEKNUEPFT
+  HANDGEWEBT
+  MASCHINELL
+}
+
+enum KnotTechnique {
+  SENNEH
+  GHIORDES
+  BERBER
+  KELIM_FLACHGEWEBE
+}
+
+enum OriginCountry {
+  IRAN
+  PAKISTAN
+  AFGHANISTAN
+  INDIEN
+  NEPAL
+  CHINA
+  MAROKKO
+  TUERKEI
+}
+
+enum AgeCategory {
+  MODERN
+  ALT
+  SEMI_ANTIK
+  ANTIK
+}
+
+enum Condition {
+  NEU
+  WIE_NEU
+  SEHR_GUT
+  GUT
+  RESTAURIERT
+}
+
+enum PatternType {
+  MEDAILLON
+  ALLOVER
+  BOTEH
+  HERATI
+  GEOMETRISCH
+  FIGURAL
+  GUL
+  HEXAGON
+  RAUTEN
+}
+
+enum Style {
+  KLASSISCH
+  MODERN
+  KELIM
+  TRIBAL
+  VINTAGE
+  BERBER
+}
+
+enum MainColor {
+  ROT
+  BLAU
+  BEIGE
+  GRUEN
+  ANTHRAZIT
+  CREME
+  GOLD
+  ROSTBRAUN
+  MULTICOLOR
+}
+
+enum Room {
+  WOHNZIMMER
+  SCHLAFZIMMER
+  ESSZIMMER
+  KUECHE
+  KINDERZIMMER
+  FLUR
+  BUERO
+}
+
+model Customer {
+  id                     String    @id @default(cuid())
+  email                  String    @unique
+  emailVerifiedAt        DateTime?
+  emailVerifyTokenHash   String?   @unique
+  emailVerifyExpiresAt   DateTime?
+  passwordHash           String?
+  passwordResetTokenHash String?   @unique
+  passwordResetExpiresAt DateTime?
+
+  firstName String?
+  lastName  String?
+  phone     String?
+  locale    String  @default("de-DE")
+
+  newsletterConsent    Boolean   @default(false)
+  newsletterConsentAt  DateTime?
+  newsletterVerifiedAt DateTime?
+
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  lastLoginIp         String?
+
+  isBusinessCustomer Boolean @default(false)
+  companyName        String?
+  vatId              String?
+  taxExempt          Boolean @default(false)
+  customerGroup      String?
+
+  tags          String[]
+  internalNotes String?
+
+  deletedAt    DateTime?
+  anonymizedAt DateTime?
+
+  orders      Order[]
+  addresses   CustomerAddress[]
+  consentLogs ConsentLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([deletedAt])
+  @@index([lockedUntil])
+}
+
+model CustomerAddress {
+  id                String  @id @default(cuid())
+  customerId        String
+  label             String?
+  isDefaultBilling  Boolean @default(false)
+  isDefaultShipping Boolean @default(false)
+
+  firstName   String
+  lastName    String
+  company     String?
+  street1     String
+  street2     String?
+  city        String
+  state       String?
+  postalCode  String
+  countryCode String
+  phone       String?
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+}
+
 model Order {
-  id                String      @id @default(cuid())
-  stripeSessionId   String?     @unique
-  stripePaymentIntent String?
+  id          String @id @default(cuid())
+  orderNumber String @unique
+  publicToken String @unique
 
-  // Kundendaten
-  customerName      String
-  customerEmail     String
-  customerPhone     String?
+  customerId    String?
+  customerEmail String
+  customerPhone String?
 
-  // Lieferadresse
-  shippingStreet    String?
-  shippingCity      String?
-  shippingZip       String?
-  shippingCountry   String      @default("DE")
-  deliveryType      DeliveryType @default(SHIPPING) // SHIPPING oder PICKUP
+  billingFirstName   String
+  billingLastName    String
+  billingCompany     String?
+  billingStreet1     String
+  billingStreet2     String?
+  billingCity        String
+  billingState       String?
+  billingPostalCode  String
+  billingCountryCode String
+  billingPhone       String?
 
-  // Bestellstatus
-  status            OrderStatus @default(PENDING)
-  totalAmount       Int         // Gesamtbetrag in Cent
+  shippingFirstName   String
+  shippingLastName    String
+  shippingCompany     String?
+  shippingStreet1     String
+  shippingStreet2     String?
+  shippingCity        String
+  shippingState       String?
+  shippingPostalCode  String
+  shippingCountryCode String
+  shippingPhone       String?
 
-  // Admin-Felder
-  trackingNumber    String?     // DHL/DPD Sendungsnummer
-  adminNote         String?     // Interne Notiz für Admin
+  currency       String  @default("EUR")
+  subtotalCents  Int
+  shippingCents  Int     @default(0)
+  taxCents       Int     @default(0)
+  discountCents  Int     @default(0)
+  totalCents     Int
+  paidCents      Int     @default(0)
+  refundedCents  Int     @default(0)
+  taxIncluded    Boolean @default(true)
+  taxRatePercent Decimal @default(0) @db.Decimal(5, 2)
 
-  items             OrderItem[]
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  orderStatus       OrderStatus       @default(PENDING)
+  paymentStatus     PaymentStatus     @default(PENDING)
+  fulfillmentStatus FulfillmentStatus @default(UNFULFILLED)
+  deliveryType      DeliveryType      @default(SHIPPING)
+
+  cancelReason String?
+  cancelledAt  DateTime?
+
+  discountCode     String?
+  discountSnapshot Json?
+
+  shippingMethodName       String?
+  shippingMethodId         String?
+  estimatedDeliveryMinDays Int?
+  estimatedDeliveryMaxDays Int?
+
+  paymentProvider       String?
+  stripeSessionId       String? @unique
+  stripePaymentIntentId String? @unique
+  paymentMethodType     String?
+  paymentMethodLast4    String?
+
+  isB2B               Boolean @default(false)
+  vatIdSnapshot       String?
+  isReverseCharge     Boolean @default(false)
+  purchaseOrderNumber String?
+
+  browserIp String?
+  userAgent String?
+  referrer  String?
+
+  termsAcceptedAt   DateTime
+  termsVersion      String
+  privacyAcceptedAt DateTime
+  privacyVersion    String
+  withdrawalShownAt DateTime
+  withdrawalVersion String
+
+  customerNote String?
+  internalNote String?
+  tags         String[]
+
+  createdAt    DateTime  @default(now())
+  confirmedAt  DateTime?
+  paidAt       DateTime?
+  fulfilledAt  DateTime?
+  deliveredAt  DateTime?
+  refundedAt   DateTime?
+  updatedAt    DateTime  @updatedAt
+  anonymizedAt DateTime?
+
+  customer      Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items         OrderItem[]
+  fulfillments  Fulfillment[]
+  refunds       Refund[]
+  paymentEvents PaymentEvent[]
+  consentLogs   ConsentLog[]
+
+  @@index([customerId])
+  @@index([customerEmail])
+  @@index([orderStatus])
+  @@index([paymentStatus])
+  @@index([fulfillmentStatus])
+  @@index([createdAt])
+  @@index([orderNumber])
 }
 
 model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+
+  productId String?
+  variantId String?
+
+  productTitle    String
+  productSlug     String?
+  variantTitle    String?
+  productSku      String
+  productImageUrl String?
+  productCategory String?
+
+  quantity        Int
+  unitPriceCents  Int
+  unitWeightGrams Int?
+
+  taxRatePercent Decimal @db.Decimal(5, 2)
+  taxClass       String?
+  taxCents       Int
+
+  discountCents Int @default(0)
+  subtotalCents Int
+  totalCents    Int
+
+  fulfilledQuantity Int @default(0)
+  refundedQuantity  Int @default(0)
+  refundedCents     Int @default(0)
+
+  metadata Json?
+
+  order            Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product          Product?          @relation(fields: [productId], references: [id], onDelete: SetNull)
+  fulfillmentItems FulfillmentItem[]
+  refundItems      RefundItem[]
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Fulfillment {
+  id             String    @id @default(cuid())
+  orderId        String
+  trackingNumber String?
+  carrier        String?
+  trackingUrl    String?
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  notes          String?
+
+  order Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  items FulfillmentItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([trackingNumber])
+}
+
+model FulfillmentItem {
+  id            String @id @default(cuid())
+  fulfillmentId String
+  orderItemId   String
+  quantity      Int
+
+  fulfillment Fulfillment @relation(fields: [fulfillmentId], references: [id], onDelete: Cascade)
+  orderItem   OrderItem   @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@index([fulfillmentId])
+  @@index([orderItemId])
+}
+
+model Refund {
+  id             String   @id @default(cuid())
+  orderId        String
+  amountCents    Int
+  reason         String?
+  notes          String?
+  stripeRefundId String?  @unique
+  refundedAt     DateTime @default(now())
+
+  order Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  items RefundItem[]
+
+  @@index([orderId])
+  @@index([stripeRefundId])
+}
+
+model RefundItem {
+  id          String @id @default(cuid())
+  refundId    String
+  orderItemId String
+  quantity    Int
+  amountCents Int
+
+  refund    Refund    @relation(fields: [refundId], references: [id], onDelete: Cascade)
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@index([refundId])
+  @@index([orderItemId])
+}
+
+model Discount {
+  id          String  @id @default(cuid())
+  code        String  @unique
+  description String?
+
+  type  DiscountType
+  value Int
+
+  minOrderCents    Int?
+  maxDiscountCents Int?
+  usageLimit       Int?
+  usedCount        Int  @default(0)
+  oncePerCustomer  Boolean @default(false)
+
+  validFrom  DateTime
+  validUntil DateTime?
+
+  excludedProductIds  String[]
+  excludedCategoryIds String[]
+  stackable           Boolean  @default(false)
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([code])
+  @@index([active])
+  @@index([validUntil])
+}
+
+model ShippingZone {
   id        String   @id @default(cuid())
-  orderId   String
-  order     Order    @relation(fields: [orderId], references: [id])
-  productId String
-  product   Product  @relation(fields: [productId], references: [id])
-  quantity  Int      @default(1)
-  price     Int      // Preis zum Zeitpunkt der Bestellung (nicht aktuelle Preis!)
+  name      String
+  countries String[]
+  active    Boolean  @default(true)
+
+  rates ShippingRate[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active])
+}
+
+model ShippingRate {
+  id      String  @id @default(cuid())
+  zoneId  String
+  name    String
+  carrier String?
+
+  type          ShippingType
+  flatRateCents Int?
+  weightTiers   Json?
+  priceTiers    Json?
+
+  freeShippingThresholdCents Int?
+
+  minDeliveryDays Int
+  maxDeliveryDays Int
+
+  taxClass String?
+
+  active Boolean @default(true)
+
+  zone ShippingZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([zoneId])
+  @@index([active])
+}
+
+model PaymentEvent {
+  id              String   @id @default(cuid())
+  provider        String
+  providerEventId String   @unique
+  eventType       String
+  payload         Json
+  signature       String?
+
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+  retryCount  Int       @default(0)
+  lastError   String?
+
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([provider, providerEventId])
+  @@index([processedAt])
+  @@index([orderId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorType  String
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  beforeData Json?
+  afterData  Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@index([action])
+}
+
+model ConsentLog {
+  id         String  @id @default(cuid())
+  customerId String?
+  orderId    String?
+
+  consentType    ConsentType
+  consentVersion String
+  granted        Boolean
+  text           String?
+  ipAddress      String?
+  userAgent      String?
+
+  grantedAt   DateTime  @default(now())
+  withdrawnAt DateTime?
+
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  order    Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([orderId])
+  @@index([consentType])
+}
+
+model OrderCounter {
+  id    Int @id @default(1)
+  year  Int @unique
+  value Int @default(0)
+
+  updatedAt DateTime @updatedAt
 }
 
 enum OrderStatus {
-  PENDING    // Ausstehend — noch nicht bezahlt
-  PAID       // Bezahlt — Stripe bestätigt
-  SHIPPED    // Versendet
-  DELIVERED  // Geliefert
-  CANCELLED  // Storniert
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  PARTIALLY_REFUNDED
+  REFUNDED
+  FAILED
+  EXPIRED
+}
+
+enum FulfillmentStatus {
+  UNFULFILLED
+  PARTIALLY_FULFILLED
+  FULFILLED
+  RETURNED
 }
 
 enum DeliveryType {
-  SHIPPING   // Versand
-  PICKUP     // Selbstabholung Stuttgart
+  SHIPPING
+  PICKUP
+  LOCAL_DELIVERY
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  FREE_SHIPPING
+}
+
+enum ShippingType {
+  FLAT
+  WEIGHT_BASED
+  PRICE_BASED
+}
+
+enum ConsentType {
+  TERMS
+  PRIVACY
+  WITHDRAWAL
+  NEWSLETTER
+  COOKIES_ANALYTICS
+  COOKIES_MARKETING
 }

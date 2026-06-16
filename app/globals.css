@@ -2,23 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Italianno&display=swap');
 
 :root {
   --font-playfair: 'Playfair Display', Georgia, serif;
-  --font-inter: 'Inter', system-ui, sans-serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-script: 'Italianno', cursive;
 
-  --bg:            #0B0905;
-  --bg-card:       #141009;
-  --bg-elevated:   #1D1610;
-  --gold:          #C9A553;
-  --gold-light:    #E4C87E;
-  --gold-border:   rgba(201,165,83,.25);
-  --cream:         #F0E6D0;
-  --cream-muted:   #C8B89A;
-  --muted:         #8A7A65;
-  --border:        #28211A;
-  --border-light:  #352C22;
+  --bg:            #FAFAF7;
+  --bg-card:       #FFFFFF;
+  --bg-elevated:   #F0EAD8;
+  --bg-sand:       #F0EAD8;
+  --red:           #A33B2A;
+  --red-light:     #C24A37;
+  --red-border:    rgba(163,59,42,.20);
+  --ink:           #0F0A06;
+  --ink-muted:     #5A4A3A;
+  --muted:         #8A7866;
+  --border:        #E5DCC8;
+  --border-light:  #EFE7D6;
+  --beige:         #B89968;
+  --brass:         #B89968;
+  --brass-light:   #D2B889;
+  --sienna:        #A33B2A;
+  --hero-bg:       #0F0A06;
 }
 
 *, *::before, *::after {
@@ -31,8 +38,8 @@ html { scroll-behavior: smooth; }
 
 body {
   background: var(--bg);
-  color: var(--cream);
-  font-family: var(--font-inter);
+  color: var(--ink);
+  font-family: var(--font-body);
   font-size: 15px;
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
@@ -40,14 +47,226 @@ body {
   overflow-x: hidden;
 }
 
+/* Grain texture overlay — paper feel */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.028;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 128px 128px;
+}
+
 img { display: block; width: 100%; }
 
 :focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--red);
   outline-offset: 3px;
 }
 
-::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--red); }
+
+/* ── MARQUEE ── */
+@keyframes marquee-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-33.333%); }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll 28s linear infinite;
+}
+
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+/* ── SCROLL REVEAL ── */
+@keyframes revealUp {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reveal-anim {
+  animation: revealUp 0.72s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── CATEGORY STRIPS ── */
+.cat-strip {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  cursor: pointer;
+  transition: flex-grow 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-grow: 1;
+  min-height: 80px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cat-strip:last-child {
+  border-bottom: none;
+}
+
+.cat-strip:hover {
+  flex-grow: 2.2;
+}
+
+/* ── PRODUCT CARD HOVER ── */
+.product-card-hover {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.product-card-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 24px 48px -12px rgba(15, 10, 6, 0.14);
+}
+
+/* ── 3D TILT CARD ── */
+.tilt-card {
+  perspective: 1000px;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-style: preserve-3d;
+}
+.tilt-card:hover {
+  transform: perspective(1000px) rotateY(-2.5deg) rotateX(1.5deg) translateY(-6px);
+  box-shadow: 0 32px 64px -20px rgba(15, 10, 6, 0.22);
+}
+.tilt-card .tilt-img {
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tilt-card:hover .tilt-img {
+  transform: scale(1.06);
+}
+
+/* ── DRAG SCROLL SHOWROOM ── */
+.drag-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  cursor: grab;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+.drag-scroll::-webkit-scrollbar { display: none; }
+.drag-scroll.is-dragging {
+  cursor: grabbing;
+  scroll-behavior: auto;
+  user-select: none;
+}
+.drag-scroll.is-dragging * { pointer-events: none; }
+
+/* ── FILTER PILL ── */
+.pill {
+  position: relative;
+  transition: color 0.3s ease, background 0.3s ease, border-color 0.3s ease;
+}
+.pill::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  width: 0;
+  height: 1px;
+  background: var(--sienna);
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1), left 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.pill:hover::after {
+  width: 60%;
+  left: 20%;
+}
+
+/* ── SCRIPT FONT UTILITY ── */
+.font-script {
+  font-family: var(--font-script);
+  font-weight: 400;
+}
+
+/* ── LIVE PULSE ── */
+@keyframes live-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.35); }
+}
+.live-dot {
+  position: relative;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #7DB55B;
+}
+.live-dot::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: #7DB55B;
+  opacity: 0.5;
+  animation: live-pulse 1.8s ease-in-out infinite;
+}
+
+/* ── BESTSELLER PROGRESSIVE BLUR CARD ── */
+.bestseller-card {
+  isolation: isolate;
+}
+.bestseller-blur {
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), height 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.bestseller-blur-base {
+  height: 38%;
+  opacity: 1;
+}
+.bestseller-blur-hover {
+  height: 70%;
+  opacity: 0;
+}
+.bestseller-card:hover .bestseller-blur-base {
+  opacity: 0;
+}
+.bestseller-card:hover .bestseller-blur-hover {
+  opacity: 1;
+}
+.bestseller-reveal {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease 0.05s;
+}
+.bestseller-card:hover .bestseller-reveal {
+  max-height: 140px;
+  opacity: 1;
+}
+
+/* ── CAROUSEL CAPTION FADE ── */
+@keyframes captionIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── KEN BURNS ── */
+@keyframes ken-burns {
+  0%   { transform: scale(1) translate(0, 0); }
+  100% { transform: scale(1.08) translate(-1%, -1%); }
+}
+.ken-burns {
+  animation: ken-burns 14s ease-in-out infinite alternate;
+}

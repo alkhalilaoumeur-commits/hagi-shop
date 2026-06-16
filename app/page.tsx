@@ -1,15 +1,36 @@
 import Link from "next/link";
-import { ProductCard } from "@/components/shop/ProductCard";
+import Image from "next/image";
+import { MarqueeBar } from "@/components/home/MarqueeBar";
+import { TrustStrip } from "@/components/home/TrustStrip";
+import { HeroCarousel } from "@/components/home/HeroCarousel";
+import { WhyHagiAccordion } from "@/components/home/WhyHagiAccordion";
+import { ProgressiveBlur } from "@/components/ui/ProgressiveBlur";
+import { Reviews } from "@/components/home/Reviews";
+import { ShopFilter } from "@/components/shop/ShopFilter";
+import { ScrollReveal } from "@/components/ui/ScrollReveal";
+import { formatPrice } from "@/lib/format";
 import prisma from "@/lib/prisma";
 
-export const revalidate = 300; // 5 Minuten Cache — Startseite ändert sich selten
+export const revalidate = 300;
 
-async function getFeaturedProducts() {
+async function getBestsellers() {
   try {
     return await prisma.product.findMany({
       where: { featured: true, inStock: true },
       include: { category: true },
-      take: 6,
+      take: 3,
+      orderBy: { createdAt: "desc" },
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function getAllProducts() {
+  try {
+    return await prisma.product.findMany({
+      where: { inStock: true },
+      include: { category: true },
       orderBy: { createdAt: "desc" },
     });
   } catch {
@@ -26,145 +47,371 @@ async function getCategories() {
 }
 
 export default async function Home() {
-  const [featured, categories] = await Promise.all([
-    getFeaturedProducts(),
+  const [bestsellers, allProducts, categories] = await Promise.all([
+    getBestsellers(),
+    getAllProducts(),
     getCategories(),
   ]);
 
+  const mainProduct = bestsellers[0] ?? null;
+
   return (
     <>
-      {/* ── HERO ── */}
+      {/* ── HERO — EDITORIAL SPLIT ── */}
       <section
-        className="relative min-h-screen flex items-end overflow-hidden"
-        style={{ background: "#0B0905" }}
+        className="relative pt-32 pb-16 md:pt-36 md:pb-24 overflow-hidden"
+        style={{
+          background:
+            "radial-gradient(ellipse at 15% 20%, #F6EEDB 0%, #EFE6D2 45%, #E8DEC4 100%)",
+        }}
       >
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: "url(https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1600&auto=format&fit=crop&q=80)",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            opacity: 0.35,
-          }}
-        />
-        <div
-          className="absolute inset-0"
-          style={{ background: "linear-gradient(to top, rgba(11,9,5,0.95) 0%, rgba(11,9,5,0.4) 60%, rgba(11,9,5,0.2) 100%)" }}
-        />
+        <div className="relative max-w-page mx-auto px-6 md:px-12">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-12 lg:gap-20 items-center">
 
-        <div className="relative max-w-6xl mx-auto px-6 pb-20 pt-40 w-full">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-gold mb-5">
-            Handgeknüpft · Direkt-Import · Stuttgart
-          </p>
-          <h1 className="font-serif text-5xl md:text-7xl font-medium leading-[1.05] text-cream mb-6 max-w-3xl">
-            Teppiche mit<br />
-            <span className="italic text-gold">Geschichte.</span>
-          </h1>
-          <p className="text-cream-muted text-lg leading-relaxed mb-10 max-w-[46ch]">
-            Orientalische Unikate, moderne Klassiker und handgewebte Kelim-Teppiche
-            — direkt vom Importeur, ohne Zwischenhändler.
-          </p>
-          <div className="flex gap-4 flex-wrap">
-            <Link
-              href="/produkte"
-              className="inline-block px-8 py-3.5 text-[12px] font-semibold uppercase tracking-[0.1em] bg-gold hover:bg-gold-light transition-colors"
-              style={{ color: "#0B0905" }}
-            >
-              Zur Kollektion
-            </Link>
-            <Link
-              href="/kontakt"
-              className="inline-block px-8 py-3.5 text-[12px] font-semibold uppercase tracking-[0.1em] text-cream-muted transition-colors hover:text-gold"
-              style={{ border: "1px solid #352C22" }}
-            >
-              Beratung anfragen
-            </Link>
+            <div className="order-2 lg:order-1">
+              <div
+                className="inline-flex items-center gap-3 rounded-full px-4 py-1.5 mb-10"
+                style={{ background: "#FAF5E6", border: "1px solid #D9CDB8" }}
+              >
+                <span className="live-dot" />
+                <span
+                  className="text-[10px] uppercase tracking-[0.22em] font-medium"
+                  style={{ color: "#5A4A3A" }}
+                >
+                  Stuttgart · Direktimport seit 2003
+                </span>
+              </div>
+
+              <h1
+                className="font-serif leading-[0.92] mb-10"
+                style={{ fontSize: "clamp(3rem, 7vw, 6.5rem)", color: "#0F0A06", letterSpacing: "-0.015em" }}
+              >
+                Direkt vom<br />
+                <span style={{ color: "#A33B2A" }}>Knüpfer.</span>
+              </h1>
+
+              <p
+                className="text-lg md:text-xl leading-snug mb-12"
+                style={{ color: "#5A4A3A", maxWidth: "32ch" }}
+              >
+                Kein Großhandel. Kein Mittler. Kein Aufschlag.
+                Stuttgarter Showroom seit zwanzig Jahren.
+              </p>
+
+              <div
+                className="grid grid-cols-3 gap-6 mb-12 pt-8 pb-8"
+                style={{ borderTop: "1px solid #D9CDB8", borderBottom: "1px solid #D9CDB8" }}
+              >
+                <div>
+                  <p className="font-serif" style={{ fontSize: "clamp(2.2rem, 4vw, 3.2rem)", color: "#0F0A06", lineHeight: "1" }}>
+                    47
+                  </p>
+                  <p className="text-[10px] uppercase tracking-[0.18em] mt-2" style={{ color: "#8A7866" }}>
+                    Knüpfer-<br />Familien
+                  </p>
+                </div>
+                <div>
+                  <p className="font-serif" style={{ fontSize: "clamp(2.2rem, 4vw, 3.2rem)", color: "#0F0A06", lineHeight: "1" }}>
+                    8
+                  </p>
+                  <p className="text-[10px] uppercase tracking-[0.18em] mt-2" style={{ color: "#8A7866" }}>
+                    Herkunfts-<br />länder
+                  </p>
+                </div>
+                <div>
+                  <p className="font-serif" style={{ fontSize: "clamp(2.2rem, 4vw, 3.2rem)", color: "#0F0A06", lineHeight: "1" }}>
+                    20<span style={{ color: "#A33B2A" }}>+</span>
+                  </p>
+                  <p className="text-[10px] uppercase tracking-[0.18em] mt-2" style={{ color: "#8A7866" }}>
+                    Jahre<br />Direktimport
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-6">
+                <Link
+                  href="#bestseller"
+                  className="inline-flex items-center gap-3 px-8 py-4 text-[11px] font-bold uppercase tracking-[0.18em]"
+                  style={{ background: "#0F0A06", color: "#FAFAF7" }}
+                >
+                  Bestseller entdecken
+                  <span aria-hidden>→</span>
+                </Link>
+                <Link
+                  href="/showroom"
+                  className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] font-semibold pb-1"
+                  style={{ color: "#0F0A06", borderBottom: "1px solid #0F0A06" }}
+                >
+                  Showroom-Termin →
+                </Link>
+              </div>
+            </div>
+
+            <div className="order-1 lg:order-2 relative">
+              <HeroCarousel
+                items={allProducts.slice(0, 5).map((p) => ({
+                  slug: p.slug,
+                  name: p.name,
+                  image: p.images[0] ?? "",
+                  originCity: p.originCity,
+                  origin: p.origin,
+                  yearMade: p.yearMade,
+                  knotsPerSqm: p.knotsPerSqm,
+                  knottingDurationMonths: p.knottingDurationMonths,
+                }))}
+              />
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── KATEGORIEN ── */}
-      {categories.length > 0 && (
-        <section className="max-w-6xl mx-auto px-6 py-20">
-          <div className="flex items-center justify-between mb-10">
-            <h2 className="font-serif text-3xl text-cream font-medium">Unsere Kollektionen</h2>
-            <Link href="/produkte" className="text-[12px] uppercase tracking-[0.1em] text-gold hover:text-gold-light transition-colors">
-              Alle ansehen →
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {categories.map((cat) => (
+      {/* ── MARQUEE ── */}
+      <MarqueeBar />
+
+      {/* ── TRUST STRIP ── */}
+      <TrustStrip />
+
+      {/* ── BESTSELLER ── */}
+      <section id="bestseller" className="py-14 md:py-20" style={{ background: "#FAFAF7" }}>
+        <div className="max-w-page mx-auto px-6 md:px-12">
+          <ScrollReveal>
+            <div className="flex items-end justify-between mb-10">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.25em] mb-3" style={{ color: "#B89968" }}>
+                  ✦ Aus dem Showroom
+                </p>
+                <h2 className="font-serif text-3xl md:text-5xl leading-tight" style={{ color: "#0F0A06" }}>
+                  Unsere <em style={{ color: "#A33B2A", fontStyle: "italic" }}>Bestseller.</em>
+                </h2>
+              </div>
               <Link
-                key={cat.slug}
-                href={`/produkte?kategorie=${cat.slug}`}
-                className="group relative aspect-square overflow-hidden"
-                style={{ background: "#141009" }}
+                href="#shop"
+                className="hidden md:inline-block text-[11px] uppercase tracking-[0.15em] font-semibold pb-1"
+                style={{ color: "#A33B2A", borderBottom: "1px solid #A33B2A" }}
               >
-                <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  style={{ background: "rgba(201,165,83,0.08)" }}
-                />
-                <div
-                  className="absolute inset-0 flex flex-col items-center justify-center"
-                  style={{ border: "1px solid #28211A" }}
-                >
-                  <p className="font-serif text-xl text-cream group-hover:text-gold transition-colors duration-200">
-                    {cat.name}
-                  </p>
-                  <div
-                    className="mt-2 h-px w-8 opacity-0 group-hover:opacity-100 transition-all duration-300"
-                    style={{ background: "#C9A553" }}
-                  />
-                </div>
+                Ganzen Shop ansehen →
               </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── FEATURED PRODUCTS ── */}
-      {featured.length > 0 && (
-        <section className="max-w-6xl mx-auto px-6 pb-20">
-          <div className="flex items-center justify-between mb-10">
-            <h2 className="font-serif text-3xl text-cream font-medium">Ausgewählte Stücke</h2>
-            <Link href="/produkte" className="text-[12px] uppercase tracking-[0.1em] text-gold hover:text-gold-light transition-colors">
-              Alle ansehen →
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {featured.map((product) => (
-              <ProductCard
-                key={product.id}
-                id={product.id}
-                slug={product.slug}
-                name={product.name}
-                price={product.price}
-                comparePrice={product.comparePrice}
-                image={product.images[0] ?? ""}
-                origin={product.origin}
-                sizeWidth={product.sizeWidth}
-                sizeLength={product.sizeLength}
-                inStock={product.inStock}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── TRUST SECTION ── */}
-      <section style={{ background: "#141009", borderTop: "1px solid #28211A", borderBottom: "1px solid #28211A" }} className="py-14">
-        <div className="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {[
-            { label: "Stuttgart", sub: "Vor Ort ansehen möglich" },
-            { label: "Direkt-Import", sub: "Kein Zwischenhändler" },
-            { label: "Versand DE", sub: "Schnell & versichert" },
-            { label: "14 Tage", sub: "Rückgaberecht" },
-          ].map((item) => (
-            <div key={item.label} style={{ borderRight: "1px solid #28211A" }} className="last:border-r-0 px-4">
-              <p className="font-serif text-xl text-gold mb-1">{item.label}</p>
-              <p className="text-xs text-muted">{item.sub}</p>
             </div>
-          ))}
+          </ScrollReveal>
+
+          {bestsellers.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {bestsellers.map((product, i) => (
+                <ScrollReveal key={product.id} delay={i * 120}>
+                  <Link
+                    href={`/produkte/${product.slug}`}
+                    className="group relative block overflow-hidden bestseller-card"
+                    style={{ aspectRatio: "4/5", background: "#0F0A06" }}
+                  >
+                    <Image
+                      src={product.images[0] || ""}
+                      alt={product.name}
+                      fill
+                      className="object-cover transition-transform duration-[1200ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.05]"
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                    />
+
+                    <div
+                      className="absolute top-4 left-4 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.15em] z-20"
+                      style={{ background: "#FAFAF7", color: "#0F0A06" }}
+                    >
+                      Nr. {String(i + 1).padStart(2, "0")} · Bestseller
+                    </div>
+                    {product.comparePrice && (
+                      <div
+                        className="absolute top-4 right-4 px-2.5 py-1 text-[10px] font-bold text-white z-20"
+                        style={{ background: "#A33B2A" }}
+                      >
+                        -{Math.round((1 - product.price / product.comparePrice) * 100)}%
+                      </div>
+                    )}
+
+                    <div
+                      aria-hidden
+                      className="bestseller-tint pointer-events-none absolute bottom-0 left-0 right-0"
+                      style={{
+                        height: "70%",
+                        background:
+                          "linear-gradient(to top, rgba(15,10,6,0.85) 0%, rgba(15,10,6,0.55) 35%, rgba(15,10,6,0.2) 65%, transparent 100%)",
+                      }}
+                    />
+                    <ProgressiveBlur
+                      direction="bottom"
+                      layers={6}
+                      intensity={0.35}
+                      className="bestseller-blur bestseller-blur-base"
+                    />
+                    <ProgressiveBlur
+                      direction="bottom"
+                      layers={10}
+                      intensity={0.7}
+                      className="bestseller-blur bestseller-blur-hover"
+                    />
+
+                    <div className="absolute bottom-0 left-0 right-0 p-5 z-10">
+                      <p
+                        className="text-[10px] uppercase tracking-[0.2em] mb-1.5"
+                        style={{ color: "rgba(250,250,247,0.75)" }}
+                      >
+                        {product.origin ?? "Handgeknüpft"}
+                        {product.sizeWidth && product.sizeLength && ` · ${product.sizeWidth}×${product.sizeLength} cm`}
+                      </p>
+                      <h3
+                        className="font-serif text-xl leading-tight"
+                        style={{ color: "#FAFAF7" }}
+                      >
+                        {product.name}
+                      </h3>
+
+                      <div className="bestseller-reveal">
+                        <div className="pt-4 mt-4 flex items-baseline justify-between" style={{ borderTop: "1px solid rgba(250,250,247,0.18)" }}>
+                          <div className="flex items-baseline gap-2">
+                            <span className="font-serif text-xl" style={{ color: "#FAFAF7" }}>
+                              {formatPrice(product.price)}
+                            </span>
+                            {product.comparePrice && (
+                              <span className="text-xs line-through" style={{ color: "rgba(250,250,247,0.5)" }}>
+                                {formatPrice(product.comparePrice)}
+                              </span>
+                            )}
+                          </div>
+                          <span
+                            className="text-[10px] uppercase tracking-[0.18em] font-semibold pb-0.5 inline-flex items-center gap-1"
+                            style={{ color: "#FAFAF7", borderBottom: "1px solid #FAFAF7" }}
+                          >
+                            Ansehen
+                            <span aria-hidden>→</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                </ScrollReveal>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ── WARUM HAGI — Accordion ── */}
+      <WhyHagiAccordion
+        items={[
+          {
+            title: "Direktimport seit 2003",
+            description:
+              "Viermal pro Jahr reisen wir in den Orient — Iran, Türkei, Afghanistan, Pakistan. Wir kaufen direkt beim Knüpfer, ohne Großhandels-Stationen, ohne Importeur-Marge.",
+            image: allProducts[0]?.images[0] ?? "",
+          },
+          {
+            title: "Echtheitszertifikat inklusive",
+            description:
+              "Jeder Teppich kommt mit schriftlichem Echtheitszertifikat: Herkunft, Knoten/m², Material, Knüpfer-Familie und Datum dokumentiert.",
+            image: allProducts[1]?.images[0] ?? allProducts[0]?.images[0] ?? "",
+          },
+          {
+            title: "47 Knüpfer-Familien persönlich",
+            description:
+              "Wir kennen jeden Knüpfer namentlich. Faire Preise, langfristige Beziehungen, dokumentierte Werkstätten — keine anonyme Lieferkette.",
+            image: allProducts[2]?.images[0] ?? allProducts[0]?.images[0] ?? "",
+          },
+          {
+            title: "Stuttgarter Showroom",
+            description:
+              "Über 200 Teppiche zum Anfassen in der Egilolfstraße. Persönliche Beratung durch Hagi selbst — Termin meist in 24 Stunden bestätigt.",
+            image: allProducts[3]?.images[0] ?? allProducts[0]?.images[0] ?? "",
+          },
+          {
+            title: "31 Tage Probestellung",
+            description:
+              "Zuhause testen, ohne Risiko. Versand frei Haus. Rückversand kostenlos. Keine Diskussion, kein Kleingedrucktes — wir wollen, dass er passt.",
+            image: allProducts[4]?.images[0] ?? allProducts[0]?.images[0] ?? "",
+          },
+        ]}
+      />
+
+      {/* ── SHOP MIT FILTER ── */}
+      <section id="shop" className="py-20 md:py-28" style={{ background: "#FAFAF7" }}>
+        <div className="max-w-page mx-auto px-6 md:px-12">
+          <ScrollReveal>
+            <div className="mb-12">
+              <p className="text-[10px] uppercase tracking-[0.25em] mb-3" style={{ color: "#B89968" }}>
+                ✦ Vollständige Kollektion
+              </p>
+              <h2 className="font-serif text-3xl md:text-5xl leading-tight" style={{ color: "#0F0A06" }}>
+                Der ganze Shop —<br />
+                <em style={{ color: "#A33B2A", fontStyle: "italic" }}>nach Kollektion gefiltert.</em>
+              </h2>
+            </div>
+          </ScrollReveal>
+
+          <ScrollReveal delay={120}>
+            <ShopFilter products={allProducts} categories={categories} />
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* ── REVIEWS ── */}
+      <Reviews />
+
+      {/* ── STATS ── */}
+      <section
+        style={{ background: "#F0EAD8", borderTop: "1px solid #E5DCC8" }}
+        className="py-20 md:py-28"
+      >
+        <div className="max-w-page mx-auto px-6 md:px-12">
+          <ScrollReveal>
+            <p className="text-[10px] uppercase tracking-[0.25em] mb-16" style={{ color: "#B89968" }}>
+              ✦ Warum Hagi Teppiche
+            </p>
+          </ScrollReveal>
+
+          <div className="divide-y" style={{ borderColor: "#E5DCC8" }}>
+            {[
+              {
+                num: "01",
+                title: "Kein Zwischenhändler",
+                text: "Wir kaufen direkt beim Produzenten in Iran, Türkei und Afghanistan. Keine Importeur-Marge, kein Großhandels-Aufschlag.",
+              },
+              {
+                num: "02",
+                title: "Über 20 Jahre Erfahrung",
+                text: "Seit mehr als zwei Jahrzehnten kennen wir unsere Lieferanten persönlich. Qualitätssicherung beginnt am Webstuhl, nicht im Lager.",
+              },
+              {
+                num: "03",
+                title: "Gratis Versand & 30 Tage Rückgabe",
+                text: "Bestellen Sie ohne Risiko. Lieferung frei Haus, Rückgabe kostenlos — ohne Fragen, ohne Formulare.",
+              },
+              {
+                num: "04",
+                title: "Showroom Stuttgart",
+                text: "Teppiche müssen Sie fühlen. Besuchen Sie uns in Stuttgart und erleben Sie die Qualität vor Ort.",
+              },
+            ].map((item, i) => (
+              <ScrollReveal key={item.num} delay={i * 100}>
+                <div className="grid md:grid-cols-[100px_1fr_2fr] gap-6 py-10 group">
+                  <span
+                    className="font-serif text-3xl"
+                    style={{ color: "#0F0A06" }}
+                  >
+                    {item.num}
+                  </span>
+                  <h3
+                    className="font-serif text-xl md:text-2xl leading-tight"
+                    style={{ color: "#0F0A06" }}
+                  >
+                    {item.title}
+                  </h3>
+                  <p
+                    className="text-base leading-relaxed"
+                    style={{ color: "#5A4A3A" }}
+                  >
+                    {item.text}
+                  </p>
+                </div>
+              </ScrollReveal>
+            ))}
+          </div>
         </div>
       </section>
     </>

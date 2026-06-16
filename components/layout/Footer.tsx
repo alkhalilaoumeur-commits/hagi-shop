@@ -3,7 +3,7 @@ import { VAT_NOTICE } from "@/lib/shop-config";
 
 export function Footer() {
   return (
-    <footer style={{ background: "#0B0905", borderTop: "1px solid #28211A" }} className="mt-24">
+    <footer style={{ background: "#F0EAD8", borderTop: "1px solid #E5DCC8" }}>
       <div className="max-w-6xl mx-auto px-6 py-14 grid grid-cols-1 md:grid-cols-3 gap-10">
         <div>
           <p className="font-serif text-xl font-semibold tracking-[0.18em] text-cream mb-3">
@@ -41,7 +41,7 @@ export function Footer() {
         </div>
       </div>
 
-      <div style={{ borderTop: "1px solid #28211A" }}>
+      <div style={{ borderTop: "1px solid #E5DCC8" }}>
         <div className="max-w-6xl mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-2 text-xs text-muted">
           <span>© {new Date().getFullYear()} Hagi Teppiche · Stuttgart</span>
           <span>{VAT_NOTICE} · Versand oder Selbstabholung</span>
