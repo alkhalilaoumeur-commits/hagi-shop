@@ -1,295 +1,250 @@
-"use client";
-
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import prisma from "@/lib/prisma";
+import { requireAdmin } from "@/lib/services/admin-auth";
 import { formatPrice } from "@/lib/format";
+import type { OrderStatus, PaymentStatus, FulfillmentStatus } from "@prisma/client";
 
-interface OrderItem {
-  id: string;
-  quantity: number;
-  price: number;
-  product: { name: string };
-}
+export const dynamic = "force-dynamic";
 
-interface Order {
-  id: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string | null;
-  deliveryType: "SHIPPING" | "PICKUP";
-  shippingStreet: string | null;
-  shippingCity: string | null;
-  shippingZip: string | null;
-  status: "PENDING" | "PAID" | "SHIPPED" | "DELIVERED" | "CANCELLED";
-  totalAmount: number;
-  createdAt: string;
-  trackingNumber: string | null;
-  adminNote: string | null;
-  items: OrderItem[];
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: "Ausstehend",
-  PAID: "Bezahlt",
-  SHIPPED: "Versendet",
-  DELIVERED: "Geliefert",
+const STATUS_LABEL: Record<OrderStatus, string> = {
+  PENDING: "Eingegangen",
+  CONFIRMED: "Bezahlt",
+  COMPLETED: "Abgeschlossen",
   CANCELLED: "Storniert",
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: "bg-yellow-100 text-yellow-800",
-  PAID: "bg-green/10 text-green",
-  SHIPPED: "bg-blue-100 text-blue-700",
-  DELIVERED: "bg-green/20 text-green",
-  CANCELLED: "bg-signal/10 text-signal",
+const STATUS_COLOR: Record<OrderStatus, string> = {
+  PENDING: "#B89968",
+  CONFIRMED: "#5C7A4B",
+  COMPLETED: "#0F0A06",
+  CANCELLED: "#7E2A1D",
 };
 
-const STATUS_FLOW = ["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
+const FULFILLMENT_LABEL: Record<FulfillmentStatus, string> = {
+  UNFULFILLED: "Offen",
+  PARTIALLY_FULFILLED: "Teilversand",
+  FULFILLED: "Versendet",
+  RETURNED: "Retourniert",
+};
 
-export default function AdminBestellungenPage() {
-  const router = useRouter();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>({});
-  const [noteInputs, setNoteInputs] = useState<Record<string, string>>({});
+interface SearchParams {
+  status?: string;
+  payment?: string;
+  fulfillment?: string;
+  q?: string;
+  page?: string;
+}
 
-  const adminPw =
-    typeof window !== "undefined" ? sessionStorage.getItem("adminPw") ?? "" : "";
+const PAGE_SIZE = 25;
 
-  const loadOrders = useCallback(async () => {
-    const res = await fetch("/api/admin/bestellungen", {
-      headers: { "x-admin-password": adminPw },
-    });
-    if (res.status === 401) {
-      router.push("/admin/login");
-      return;
-    }
-    if (res.ok) {
-      const data = await res.json();
-      const loaded: Order[] = data.orders ?? [];
-      setOrders(loaded);
-      const tracking: Record<string, string> = {};
-      const notes: Record<string, string> = {};
-      loaded.forEach((o) => {
-        tracking[o.id] = o.trackingNumber ?? "";
-        notes[o.id] = o.adminNote ?? "";
-      });
-      setTrackingInputs(tracking);
-      setNoteInputs(notes);
-    }
-    setLoading(false);
-  }, [adminPw, router]);
+export default async function OrdersListPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  await requireAdmin();
 
-  useEffect(() => {
-    if (!adminPw) {
-      router.push("/admin/login");
-      return;
-    }
-    loadOrders();
-  }, [adminPw, loadOrders, router]);
+  const params = await searchParams;
+  const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
+  const skip = (page - 1) * PAGE_SIZE;
 
-  const updateStatus = async (orderId: string, status: string) => {
-    setUpdating(orderId);
-    await fetch("/api/admin/bestellungen", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "x-admin-password": adminPw },
-      body: JSON.stringify({ id: orderId, status }),
-    });
-    await loadOrders();
-    setUpdating(null);
-  };
+  const where: Record<string, unknown> = {};
+  if (params.status && isOrderStatus(params.status)) where.orderStatus = params.status;
+  if (params.payment && isPaymentStatus(params.payment)) where.paymentStatus = params.payment;
+  if (params.fulfillment && isFulfillmentStatus(params.fulfillment)) where.fulfillmentStatus = params.fulfillment;
+  if (params.q) {
+    const q = params.q.trim().slice(0, 80);
+    where.OR = [
+      { orderNumber: { contains: q, mode: "insensitive" } },
+      { customerEmail: { contains: q, mode: "insensitive" } },
+      { billingLastName: { contains: q, mode: "insensitive" } },
+      { shippingLastName: { contains: q, mode: "insensitive" } },
+    ];
+  }
 
-  const saveTracking = async (orderId: string) => {
-    setUpdating(orderId);
-    await fetch("/api/admin/bestellungen", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "x-admin-password": adminPw },
-      body: JSON.stringify({ id: orderId, trackingNumber: trackingInputs[orderId] ?? "" }),
-    });
-    await loadOrders();
-    setUpdating(null);
-  };
+  const [orders, total] = await Promise.all([
+    prisma.order.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: PAGE_SIZE,
+      skip,
+      select: {
+        id: true,
+        orderNumber: true,
+        customerEmail: true,
+        billingFirstName: true,
+        billingLastName: true,
+        totalCents: true,
+        orderStatus: true,
+        paymentStatus: true,
+        fulfillmentStatus: true,
+        deliveryType: true,
+        createdAt: true,
+      },
+    }),
+    prisma.order.count({ where }),
+  ]);
 
-  const saveNote = async (orderId: string) => {
-    setUpdating(orderId);
-    await fetch("/api/admin/bestellungen", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "x-admin-password": adminPw },
-      body: JSON.stringify({ id: orderId, adminNote: noteInputs[orderId] ?? "" }),
-    });
-    await loadOrders();
-    setUpdating(null);
-  };
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="min-h-screen bg-surface">
-      <header className="bg-ink text-bg px-6 py-4 flex items-center justify-between">
-        <h1 className="font-serif text-lg">Hagi <span className="text-gold">Admin</span></h1>
-        <nav className="flex gap-6 text-sm">
-          <Link href="/admin" className="hover:text-gold">Dashboard</Link>
-          <Link href="/admin/produkte" className="hover:text-gold">Produkte</Link>
-          <Link href="/admin/bestellungen" className="text-gold">Bestellungen</Link>
-        </nav>
+    <div className="space-y-10">
+      <header>
+        <p className="text-[10px] uppercase tracking-[0.25em] mb-3" style={{ color: "#B89968" }}>
+          ✦ Bestellungen
+        </p>
+        <h1 className="font-serif" style={{ fontSize: "clamp(2rem, 4vw, 3rem)", color: "#0F0A06" }}>
+          {total} {total === 1 ? "Bestellung" : "Bestellungen"}
+        </h1>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-10">
-        <h2 className="font-serif text-2xl text-ink mb-6">
-          Bestellungen ({orders.length})
-        </h2>
+      <form
+        method="get"
+        className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 p-5"
+        style={{ background: "#F0EAD8", border: "1px solid #E5DCC8" }}
+      >
+        <input
+          name="q"
+          defaultValue={params.q ?? ""}
+          placeholder="Suche: Bestellnummer, Email, Name…"
+          className="px-3 py-2.5 text-sm bg-transparent focus:outline-none"
+          style={{ border: "1px solid #D9CDB8", color: "#0F0A06" }}
+          maxLength={80}
+        />
+        <select
+          name="status"
+          defaultValue={params.status ?? ""}
+          className="px-3 py-2.5 text-sm bg-transparent focus:outline-none"
+          style={{ border: "1px solid #D9CDB8", color: "#0F0A06" }}
+        >
+          <option value="">Alle Status</option>
+          {Object.entries(STATUS_LABEL).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
+        </select>
+        <select
+          name="payment"
+          defaultValue={params.payment ?? ""}
+          className="px-3 py-2.5 text-sm bg-transparent focus:outline-none"
+          style={{ border: "1px solid #D9CDB8", color: "#0F0A06" }}
+        >
+          <option value="">Alle Zahlungen</option>
+          <option value="PENDING">Pending</option>
+          <option value="PAID">Bezahlt</option>
+          <option value="REFUNDED">Refunded</option>
+          <option value="FAILED">Failed</option>
+        </select>
+        <select
+          name="fulfillment"
+          defaultValue={params.fulfillment ?? ""}
+          className="px-3 py-2.5 text-sm bg-transparent focus:outline-none"
+          style={{ border: "1px solid #D9CDB8", color: "#0F0A06" }}
+        >
+          <option value="">Alle Versand</option>
+          {Object.entries(FULFILLMENT_LABEL).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
+        </select>
+        <button
+          type="submit"
+          className="px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.15em]"
+          style={{ background: "#0F0A06", color: "#FAFAF7" }}
+        >
+          Filtern
+        </button>
+      </form>
 
-        {loading ? (
-          <p className="text-muted text-sm">Laden…</p>
-        ) : orders.length === 0 ? (
-          <p className="text-muted text-sm bg-bg border border-border p-6">
-            Noch keine Bestellungen.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {orders.map((order) => (
-              <div key={order.id} className="bg-bg border border-border">
-                {/* Kopfzeile */}
-                <div
-                  className="px-4 py-3 flex items-center gap-4 cursor-pointer hover:bg-surface"
-                  onClick={() => setExpanded(expanded === order.id ? null : order.id)}
-                >
-                  {/* Kunde */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-ink">{order.customerName}</p>
-                    <p className="text-xs text-muted">{order.customerEmail}</p>
-                    <p className="text-xs text-muted">
-                      {order.items.map((i) => `${i.product.name} ×${i.quantity}`).join(", ")}
-                    </p>
-                  </div>
-
-                  {/* Betrag + Status */}
-                  <div className="text-right flex-shrink-0 space-y-1">
-                    <p className="text-sm font-semibold text-gold">
-                      {formatPrice(order.totalAmount)}
-                    </p>
-                    <span
-                      className={`inline-block text-xs px-2 py-0.5 rounded-sm ${STATUS_COLORS[order.status]}`}
-                    >
-                      {STATUS_LABELS[order.status]}
-                    </span>
-                    <p className="text-xs text-muted">
-                      {new Date(order.createdAt).toLocaleDateString("de-DE")}
-                    </p>
-                  </div>
-
-                  {/* Toggle */}
-                  <div className="text-muted text-xs flex-shrink-0 w-4 text-center">
-                    {expanded === order.id ? "▲" : "▼"}
-                  </div>
-                </div>
-
-                {/* Detail-Klappe */}
-                {expanded === order.id && (
-                  <div className="border-t border-border px-4 py-4 bg-surface space-y-5">
-                    {/* Positionen */}
-                    <div>
-                      <p className="text-xs text-muted uppercase tracking-wider mb-2">Positionen</p>
-                      <table className="w-full text-sm">
-                        <tbody>
-                          {order.items.map((item) => (
-                            <tr key={item.id}>
-                              <td className="py-0.5 text-ink">{item.product.name}</td>
-                              <td className="py-0.5 text-muted text-right">×{item.quantity}</td>
-                              <td className="py-0.5 text-right pl-4">{formatPrice(item.price * item.quantity)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Lieferung */}
-                    <div>
-                      <p className="text-xs text-muted uppercase tracking-wider mb-2">Lieferung</p>
-                      {order.deliveryType === "PICKUP" ? (
-                        <p className="text-sm text-ink">Selbstabholung Stuttgart</p>
-                      ) : (
-                        <p className="text-sm text-ink">
-                          {order.shippingStreet}, {order.shippingZip} {order.shippingCity}
-                        </p>
-                      )}
-                      {order.customerPhone && (
-                        <p className="text-xs text-muted mt-1">Tel: {order.customerPhone}</p>
-                      )}
-                    </div>
-
-                    {/* Tracking-Nummer */}
-                    {order.deliveryType === "SHIPPING" && (
-                      <div>
-                        <p className="text-xs text-muted uppercase tracking-wider mb-2">Sendungsverfolgung</p>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={trackingInputs[order.id] ?? ""}
-                            onChange={(e) => setTrackingInputs({ ...trackingInputs, [order.id]: e.target.value })}
-                            placeholder="DHL/DPD Sendungsnummer"
-                            className="flex-1 border border-border px-3 py-1.5 text-sm focus:border-gold outline-none"
-                          />
-                          <button
-                            onClick={() => saveTracking(order.id)}
-                            disabled={updating === order.id}
-                            className="text-xs px-3 py-1.5 bg-ink text-bg hover:bg-ink/90 disabled:opacity-50"
-                          >
-                            {updating === order.id ? "…" : "Speichern"}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Interne Notiz */}
-                    <div>
-                      <p className="text-xs text-muted uppercase tracking-wider mb-2">Interne Notiz</p>
-                      <div className="flex gap-2">
-                        <textarea
-                          rows={2}
-                          value={noteInputs[order.id] ?? ""}
-                          onChange={(e) => setNoteInputs({ ...noteInputs, [order.id]: e.target.value })}
-                          placeholder="z.B. Telefonat mit Kunde, besondere Verpackung…"
-                          className="flex-1 border border-border px-3 py-1.5 text-sm focus:border-gold outline-none resize-none"
-                        />
-                        <button
-                          onClick={() => saveNote(order.id)}
-                          disabled={updating === order.id}
-                          className="text-xs px-3 py-1.5 bg-ink text-bg hover:bg-ink/90 disabled:opacity-50 self-start"
-                        >
-                          {updating === order.id ? "…" : "Speichern"}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Status ändern */}
-                    <div>
-                      <p className="text-xs text-muted uppercase tracking-wider mb-2">Status ändern</p>
-                      <div className="flex flex-wrap gap-2">
-                        {STATUS_FLOW.map((s) => (
-                          <button
-                            key={s}
-                            onClick={() => updateStatus(order.id, s)}
-                            disabled={order.status === s || updating === order.id}
-                            className={`text-xs px-3 py-1.5 border transition-colors disabled:opacity-40 ${
-                              order.status === s
-                                ? "border-gold bg-gold/10 text-gold cursor-default"
-                                : "border-border text-muted hover:border-ink hover:text-ink"
-                            }`}
-                          >
-                            {updating === order.id ? "…" : STATUS_LABELS[s]}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
+      {orders.length === 0 ? (
+        <p style={{ color: "#5A4A3A" }}>Keine Bestellungen gefunden.</p>
+      ) : (
+        <div className="divide-y" style={{ borderColor: "#E5DCC8", background: "#FFFFFF", border: "1px solid #E5DCC8" }}>
+          {orders.map((order) => (
+            <Link
+              key={order.id}
+              href={`/admin/bestellungen/${order.id}`}
+              className="grid grid-cols-[80px_1fr_auto_auto_auto] gap-4 px-5 py-4 items-center transition-colors hover:bg-[#FAFAF7]"
+            >
+              <span
+                className="text-[9px] uppercase tracking-[0.22em] font-bold px-2 py-0.5 text-center"
+                style={{ background: STATUS_COLOR[order.orderStatus], color: "#FAFAF7" }}
+              >
+                {STATUS_LABEL[order.orderStatus]}
+              </span>
+              <div>
+                <p className="font-mono text-sm" style={{ color: "#0F0A06" }}>
+                  {order.orderNumber}
+                </p>
+                <p className="text-[11px]" style={{ color: "#8A7866" }}>
+                  {order.billingFirstName} {order.billingLastName} · {order.customerEmail}
+                </p>
               </div>
-            ))}
+              <span
+                className="text-[10px] uppercase tracking-[0.15em] hidden md:inline-block"
+                style={{ color: "#5A4A3A" }}
+              >
+                {FULFILLMENT_LABEL[order.fulfillmentStatus]}
+              </span>
+              <p
+                className="text-[10px] uppercase tracking-[0.15em] font-mono hidden md:block"
+                style={{ color: "#8A7866" }}
+              >
+                {new Intl.DateTimeFormat("de-DE", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }).format(order.createdAt)}
+              </p>
+              <p className="font-mono text-sm text-right" style={{ color: "#0F0A06" }}>
+                {formatPrice(order.totalCents)}
+              </p>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.15em]" style={{ color: "#5A4A3A" }}>
+          <span>
+            Seite {page} von {totalPages} · {total} Bestellungen
+          </span>
+          <div className="flex gap-3">
+            {page > 1 && (
+              <Link
+                href={`?${new URLSearchParams({ ...params, page: String(page - 1) }).toString()}`}
+                className="pb-0.5"
+                style={{ color: "#A33B2A", borderBottom: "1px solid #A33B2A" }}
+              >
+                ← Zurück
+              </Link>
+            )}
+            {page < totalPages && (
+              <Link
+                href={`?${new URLSearchParams({ ...params, page: String(page + 1) }).toString()}`}
+                className="pb-0.5"
+                style={{ color: "#A33B2A", borderBottom: "1px solid #A33B2A" }}
+              >
+                Vor →
+              </Link>
+            )}
           </div>
-        )}
-      </main>
+        </div>
+      )}
     </div>
   );
+}
+
+function isOrderStatus(s: string): s is OrderStatus {
+  return ["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"].includes(s);
+}
+function isPaymentStatus(s: string): s is PaymentStatus {
+  return ["PENDING", "AUTHORIZED", "PAID", "PARTIALLY_REFUNDED", "REFUNDED", "FAILED", "EXPIRED"].includes(s);
+}
+function isFulfillmentStatus(s: string): s is FulfillmentStatus {
+  return ["UNFULFILLED", "PARTIALLY_FULFILLED", "FULFILLED", "RETURNED"].includes(s);
 }

@@ -24,9 +24,11 @@ export const COLORS = {
   brass: "#B89968",
 };
 
-export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://hagi-shop.de";
+import { APP_URL as CONFIG_APP_URL } from "@/lib/config";
+
+export const APP_URL = CONFIG_APP_URL;
 export const SHOP_NAME = "Hagi Teppiche";
-export const CONTACT_EMAIL = process.env.CONTACT_EMAIL ?? "info@hagi-teppiche.de";
+export const CONTACT_EMAIL = process.env.COMPANY_EMAIL ?? "info@hagi-shop.de";
 export const CONTACT_PHONE = "+49 711 12 34 56 78";
 export const SHOWROOM_ADDRESS = "Egilolfstraße 41, 70599 Stuttgart";
 

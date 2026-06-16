@@ -11,6 +11,7 @@ import { generateToken } from "@/lib/security/tokens";
 import { normalizeEmailOrThrow } from "@/lib/security/email";
 import { CONSENT_VERSIONS } from "./consent";
 import { logAudit } from "./audit";
+import { APP_URL } from "@/lib/config";
 
 export interface OrderCreateInput {
   items: { productId: string; quantity: number }[];
@@ -59,7 +60,6 @@ export interface OrderCreateResult {
   totalCents: number;
 }
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3002";
 
 function idempotencyKeyFor(email: string, items: OrderCreateInput["items"]): string {
   const sig = items

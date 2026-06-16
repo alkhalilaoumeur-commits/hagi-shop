@@ -64,8 +64,12 @@ export async function rateLimit(input: RateLimitInput): Promise<RateLimitResult>
 }
 
 /**
- * Periodischer Cleanup — sollte via Cron-Job laufen.
- * Löscht Rate-Limit-Logs älter als 1 Stunde (wir brauchen sie nur kurz).
+ * Periodischer Cleanup — PFLICHT via Coolify Cron alle 15 min.
+ *
+ *   curl -fsS -H "Authorization: Bearer $CRON_SECRET" \
+ *     https://hagi-shop.de/api/cron/cleanup
+ *
+ * Ohne Cron wächst auditLog linear → DoS-Verstärker.
  */
 export async function cleanupRateLimitLogs(): Promise<number> {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);

@@ -137,16 +137,43 @@ interface CompanyData {
   iban?: string;
 }
 
-const HAGI_COMPANY: CompanyData = {
-  name: process.env.COMPANY_NAME ?? "Hagi Teppiche",
-  street: process.env.COMPANY_STREET ?? "Egilolfstraße 41",
-  city: process.env.COMPANY_CITY ?? "70599 Stuttgart",
-  vatId: process.env.COMPANY_VAT_ID,
-  taxNumber: process.env.COMPANY_TAX_NUMBER,
-  email: process.env.COMPANY_EMAIL ?? "info@hagi-teppiche.de",
-  phone: process.env.COMPANY_PHONE ?? "+49 711 12 34 56 78",
-  iban: process.env.COMPANY_IBAN,
-};
+function resolveCompanyData(): CompanyData {
+  const data: CompanyData = {
+    name: process.env.COMPANY_NAME ?? "Hagi Teppiche",
+    street: process.env.COMPANY_STREET ?? "Egilolfstraße 41",
+    city: process.env.COMPANY_CITY ?? "70599 Stuttgart",
+    vatId: process.env.COMPANY_VAT_ID,
+    taxNumber: process.env.COMPANY_TAX_NUMBER,
+    email: process.env.COMPANY_EMAIL ?? "info@hagi-shop.de",
+    phone: process.env.COMPANY_PHONE ?? "+49 711 12 34 56 78",
+    iban: process.env.COMPANY_IBAN,
+  };
+
+  const isProd = process.env.NODE_ENV === "production";
+  const taxMode = process.env.TAX_MODE;
+
+  // § 14 UStG: Bei Regelbesteuerung muss USt-ID ODER Steuernummer auf der Rechnung stehen.
+  // Bei Kleinunternehmer reicht die Steuernummer.
+  if (isProd) {
+    if (!data.vatId && !data.taxNumber) {
+      throw new Error(
+        "COMPANY_VAT_ID oder COMPANY_TAX_NUMBER muss in Production gesetzt sein (§ 14 UStG).",
+      );
+    }
+    if (taxMode === "standard" && !data.vatId) {
+      throw new Error(
+        "COMPANY_VAT_ID muss bei TAX_MODE=standard gesetzt sein (Regelbesteuerung verlangt USt-ID).",
+      );
+    }
+    if (!data.iban) {
+      throw new Error("COMPANY_IBAN muss in Production gesetzt sein (Pflichtangabe auf Rechnung).");
+    }
+  }
+
+  return data;
+}
+
+const HAGI_COMPANY: CompanyData = resolveCompanyData();
 
 function formatCents(c: number): string {
   return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(c / 100);

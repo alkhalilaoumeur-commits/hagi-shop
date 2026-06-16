@@ -629,6 +629,46 @@ model OrderCounter {
   updatedAt DateTime @updatedAt
 }
 
+model Admin {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  passwordHash String
+  displayName  String?
+  isActive     Boolean @default(true)
+
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  lastLoginIp         String?
+
+  totpSecret    String?
+  totpEnabledAt DateTime?
+
+  sessions AdminSession[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([isActive])
+}
+
+model AdminSession {
+  id        String    @id @default(cuid())
+  adminId   String
+  tokenHash String    @unique
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([expiresAt])
+}
+
 enum OrderStatus {
   PENDING
   CONFIRMED

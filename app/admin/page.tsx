@@ -1,112 +1,196 @@
 import Link from "next/link";
-import { requireAdminAuth } from "@/lib/admin-auth";
 import prisma from "@/lib/prisma";
+import { requireAdmin } from "@/lib/services/admin-auth";
 import { formatPrice } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminDashboard() {
-  await requireAdminAuth();
+const STATUS_LABEL: Record<string, string> = {
+  PENDING: "Eingegangen",
+  CONFIRMED: "Bezahlt",
+  COMPLETED: "Abgeschlossen",
+  CANCELLED: "Storniert",
+};
 
-  const [productCount, orderCount, recentOrders] = await Promise.all([
-    prisma.product.count(),
-    prisma.order.count(),
-    prisma.order.findMany({
-      include: { items: { include: { product: { select: { name: true } } } } },
-      orderBy: { createdAt: "desc" },
-      take: 5,
+const STATUS_COLOR: Record<string, string> = {
+  PENDING: "#B89968",
+  CONFIRMED: "#5C7A4B",
+  COMPLETED: "#0F0A06",
+  CANCELLED: "#7E2A1D",
+};
+
+export default async function AdminDashboardPage() {
+  await requireAdmin();
+
+  const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [
+    paidLast30,
+    paidLast7,
+    revenueLast30,
+    pendingShipments,
+    recentOrders,
+    productsInStock,
+    customerCount,
+  ] = await Promise.all([
+    prisma.order.count({ where: { paymentStatus: "PAID", paidAt: { gte: since30d } } }),
+    prisma.order.count({ where: { paymentStatus: "PAID", paidAt: { gte: since7d } } }),
+    prisma.order.aggregate({
+      where: { paymentStatus: "PAID", paidAt: { gte: since30d } },
+      _sum: { totalCents: true },
     }),
+    prisma.order.count({
+      where: {
+        paymentStatus: "PAID",
+        orderStatus: { not: "CANCELLED" },
+        fulfillmentStatus: { not: "FULFILLED" },
+        deliveryType: "SHIPPING",
+      },
+    }),
+    prisma.order.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      select: {
+        id: true,
+        orderNumber: true,
+        publicToken: true,
+        customerEmail: true,
+        totalCents: true,
+        orderStatus: true,
+        paymentStatus: true,
+        fulfillmentStatus: true,
+        createdAt: true,
+        deliveryType: true,
+      },
+    }),
+    prisma.product.count({ where: { inStock: true } }),
+    prisma.customer.count({ where: { deletedAt: null } }),
   ]);
 
-  const revenue = await prisma.order.aggregate({
-    _sum: { totalAmount: true },
-    where: { status: "PAID" },
-  });
-
-  const statusMap: Record<string, string> = {
-    PENDING: "Ausstehend",
-    PAID: "Bezahlt",
-    SHIPPED: "Versendet",
-    DELIVERED: "Geliefert",
-    CANCELLED: "Storniert",
-  };
-
   return (
-    <div className="min-h-screen bg-surface">
-      {/* Admin-Navbar */}
-      <header className="bg-ink text-bg px-6 py-4 flex items-center justify-between">
-        <h1 className="font-serif text-lg">
-          Hagi <span className="text-gold">Admin</span>
+    <div className="space-y-12">
+      <header>
+        <p className="text-[10px] uppercase tracking-[0.25em] mb-3" style={{ color: "#B89968" }}>
+          ✦ Übersicht · letzte 30 Tage
+        </p>
+        <h1 className="font-serif" style={{ fontSize: "clamp(2.2rem, 4vw, 3.2rem)", color: "#0F0A06" }}>
+          Wie läuft der Laden?
         </h1>
-        <nav className="flex gap-6 text-sm">
-          <Link href="/admin" className="hover:text-gold transition-colors">Dashboard</Link>
-          <Link href="/admin/produkte" className="hover:text-gold transition-colors">Produkte</Link>
-          <Link href="/admin/bestellungen" className="hover:text-gold transition-colors">Bestellungen</Link>
-          <Link href="/" className="text-muted hover:text-gold transition-colors">→ Shop</Link>
-        </nav>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-10">
-        {/* KPIs */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-          {[
-            { label: "Produkte", value: productCount },
-            { label: "Bestellungen", value: orderCount },
-            { label: "Umsatz", value: formatPrice(revenue._sum.totalAmount ?? 0) },
-            { label: "Heute", value: new Date().toLocaleDateString("de-DE") },
-          ].map((kpi) => (
-            <div key={kpi.label} className="bg-bg border border-border p-4">
-              <p className="text-xs text-muted uppercase tracking-wider mb-1">{kpi.label}</p>
-              <p className="text-2xl font-bold text-ink">{kpi.value}</p>
-            </div>
-          ))}
-        </div>
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <KPI label="Bestellungen 30T" value={String(paidLast30)} sub={`${paidLast7} in 7T`} />
+        <KPI label="Umsatz 30T" value={formatPrice(revenueLast30._sum.totalCents ?? 0)} sub="brutto" />
+        <KPI
+          label="Versand offen"
+          value={String(pendingShipments)}
+          sub={pendingShipments > 0 ? "wartet auf dich" : "alles raus"}
+          accent={pendingShipments > 0 ? "#A33B2A" : "#5C7A4B"}
+        />
+        <KPI label="Produkte aktiv" value={String(productsInStock)} sub={`${customerCount} Kunden`} />
+      </section>
 
-        {/* Schnellzugriff */}
-        <div className="flex gap-3 mb-10">
-          <Link
-            href="/admin/produkte/neu"
-            className="bg-green text-white px-5 py-2.5 text-sm font-medium hover:bg-green/90 transition-colors"
-          >
-            + Neues Produkt
-          </Link>
+      <section>
+        <div className="flex items-end justify-between mb-6">
+          <p className="text-[10px] uppercase tracking-[0.22em]" style={{ color: "#B89968" }}>
+            ✦ Letzte Bestellungen
+          </p>
           <Link
             href="/admin/bestellungen"
-            className="border border-border text-ink px-5 py-2.5 text-sm font-medium hover:bg-surface transition-colors"
+            className="text-[11px] uppercase tracking-[0.15em] pb-1"
+            style={{ color: "#A33B2A", borderBottom: "1px solid #A33B2A" }}
           >
-            Alle Bestellungen
+            Alle ansehen →
           </Link>
         </div>
 
-        {/* Letzte Bestellungen */}
-        <div>
-          <h2 className="font-serif text-xl text-ink mb-4">Letzte Bestellungen</h2>
-          {recentOrders.length === 0 ? (
-            <p className="text-muted text-sm">Noch keine Bestellungen.</p>
-          ) : (
-            <div className="bg-bg border border-border divide-y divide-border">
-              {recentOrders.map((order) => (
-                <div key={order.id} className="px-4 py-3 flex items-center justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-ink">{order.customerName}</p>
-                    <p className="text-xs text-muted">{order.customerEmail}</p>
-                    <p className="text-xs text-muted">
-                      {order.items.map((i) => i.product.name).join(", ")}
-                    </p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-semibold text-gold">{formatPrice(order.totalAmount)}</p>
-                    <p className="text-xs text-muted">{statusMap[order.status] ?? order.status}</p>
-                    <p className="text-xs text-muted">
-                      {new Date(order.createdAt).toLocaleDateString("de-DE")}
-                    </p>
-                  </div>
+        {recentOrders.length === 0 ? (
+          <p style={{ color: "#5A4A3A" }}>Noch keine Bestellungen.</p>
+        ) : (
+          <div className="divide-y" style={{ borderColor: "#E5DCC8", background: "#FFFFFF", border: "1px solid #E5DCC8" }}>
+            {recentOrders.map((order) => (
+              <Link
+                key={order.id}
+                href={`/admin/bestellungen/${order.id}`}
+                className="grid grid-cols-[auto_1fr_auto_auto] gap-4 px-5 py-4 items-center transition-colors hover:bg-[#FAFAF7]"
+              >
+                <span
+                  className="text-[9px] uppercase tracking-[0.22em] font-bold px-2 py-0.5"
+                  style={{ background: STATUS_COLOR[order.orderStatus] ?? "#8A7866", color: "#FAFAF7" }}
+                >
+                  {STATUS_LABEL[order.orderStatus] ?? order.orderStatus}
+                </span>
+                <div>
+                  <p className="font-mono text-sm" style={{ color: "#0F0A06" }}>
+                    {order.orderNumber}
+                  </p>
+                  <p className="text-[11px]" style={{ color: "#8A7866" }}>
+                    {order.customerEmail} · {order.deliveryType === "PICKUP" ? "Abholung" : "Versand"}
+                  </p>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </main>
+                <p
+                  className="text-[10px] uppercase tracking-[0.15em] font-mono hidden md:block"
+                  style={{ color: "#8A7866" }}
+                >
+                  {new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(order.createdAt)}
+                </p>
+                <p className="font-mono text-sm text-right" style={{ color: "#0F0A06" }}>
+                  {formatPrice(order.totalCents)}
+                </p>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <QuickAction
+          href="/admin/bestellung-anlegen"
+          label="Showroom-Verkauf eintragen"
+          description="Walk-in-Kunde im Showroom? Manuelle Order anlegen damit Inventar synchron bleibt."
+        />
+        <QuickAction
+          href="/admin/export"
+          label="CSV für Steuerberater"
+          description="Zeitraum wählen, DATEV-kompatible Datei runterladen."
+        />
+      </section>
     </div>
+  );
+}
+
+function KPI({ label, value, sub, accent = "#0F0A06" }: { label: string; value: string; sub?: string; accent?: string }) {
+  return (
+    <div className="p-5" style={{ background: "#FFFFFF", border: "1px solid #E5DCC8" }}>
+      <p className="text-[10px] uppercase tracking-[0.18em] mb-2" style={{ color: "#8A7866" }}>
+        {label}
+      </p>
+      <p className="font-serif" style={{ fontSize: "clamp(1.6rem, 3vw, 2.2rem)", color: accent, lineHeight: 1 }}>
+        {value}
+      </p>
+      {sub && (
+        <p className="text-[10px] mt-2" style={{ color: "#5A4A3A" }}>
+          {sub}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function QuickAction({ href, label, description }: { href: string; label: string; description: string }) {
+  return (
+    <Link
+      href={href}
+      className="block p-6 transition-colors hover:bg-[#0F0A06] group"
+      style={{ background: "#F0EAD8", border: "1px solid #E5DCC8" }}
+    >
+      <p className="font-serif text-xl mb-2 group-hover:text-[#FAFAF7]" style={{ color: "#0F0A06" }}>
+        {label} →
+      </p>
+      <p className="text-sm group-hover:text-[#D2C9B5]" style={{ color: "#5A4A3A" }}>
+        {description}
+      </p>
+    </Link>
   );
 }

@@ -1,8 +1,9 @@
 import { MetadataRoute } from "next";
 import prisma from "@/lib/prisma";
+import { APP_URL } from "@/lib/config";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://hagi-shop.de";
+  const appUrl = APP_URL;
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: appUrl, priority: 1, changeFrequency: "weekly" },

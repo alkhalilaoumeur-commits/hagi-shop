@@ -4,6 +4,7 @@ import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { formatPrice } from "@/lib/format";
 import { VAT_NOTICE } from "@/lib/shop-config";
+import { APP_URL } from "@/lib/config";
 import { AddToCartButton } from "@/components/shop/AddToCartButton";
 import { ProductImageGallery } from "@/components/shop/ProductImageGallery";
 import { ProductCard } from "@/components/shop/ProductCard";
@@ -70,7 +71,7 @@ export default async function ProductDetailPage({ params }: Props) {
     ? Math.round((1 - product.price / product.comparePrice) * 100)
     : null;
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://hagi-shop.de";
+  const appUrl = APP_URL;
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [

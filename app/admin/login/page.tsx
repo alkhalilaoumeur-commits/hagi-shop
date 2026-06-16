@@ -1,67 +1,135 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import { loginAdminAction } from "@/app/actions/admin-auth";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [retryAfter, setRetryAfter] = useState<number | null>(null);
+  const [isPending, startTransition] = useTransition();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    const res = await fetch("/api/admin/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
+    startTransition(async () => {
+      setError(null);
+      setRetryAfter(null);
+      const result = await loginAdminAction({ email, password });
+      if (result.ok) {
+        router.push(result.redirectTo);
+        router.refresh();
+      } else {
+        setError(translateError(result.error));
+        if (result.retryAfter) setRetryAfter(result.retryAfter);
+      }
     });
-
-    if (res.ok) {
-      sessionStorage.setItem("adminPw", password);
-      router.push("/admin");
-    } else {
-      setError("Falsches Passwort.");
-    }
-    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-surface flex items-center justify-center px-4">
+    <main style={{ background: "#FAFAF7", minHeight: "100vh" }} className="flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        <h1 className="font-serif text-2xl text-ink text-center mb-8">
-          Hagi-Shop <span className="text-gold">Admin</span>
-        </h1>
+        <div className="text-center mb-10">
+          <p
+            className="text-[10px] uppercase tracking-[0.25em] mb-3"
+            style={{ color: "#B89968" }}
+          >
+            ✦ Intern
+          </p>
+          <p className="font-serif text-3xl font-semibold tracking-[0.18em]" style={{ color: "#0F0A06" }}>
+            HAGI<span style={{ color: "#A33B2A" }}>.</span>
+          </p>
+          <p className="text-[11px] uppercase tracking-[0.18em] mt-2" style={{ color: "#5A4A3A" }}>
+            Admin-Bereich
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="bg-bg border border-border p-6 space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="p-8 space-y-5"
+          style={{ background: "#FFFFFF", border: "1px solid #E5DCC8" }}
+        >
           <div>
-            <label className="text-sm text-muted block mb-1">Admin-Passwort</label>
+            <label
+              className="text-[10px] uppercase tracking-[0.18em] block mb-2"
+              style={{ color: "#5A4A3A" }}
+            >
+              E-Mail
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3 py-2.5 text-sm bg-transparent focus:outline-none"
+              style={{ border: "1px solid #D9CDB8", color: "#0F0A06" }}
+              required
+              autoFocus
+              autoComplete="email"
+            />
+          </div>
+
+          <div>
+            <label
+              className="text-[10px] uppercase tracking-[0.18em] block mb-2"
+              style={{ color: "#5A4A3A" }}
+            >
+              Passwort
+            </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-border px-3 py-2.5 text-sm bg-bg focus:border-gold outline-none"
+              className="w-full px-3 py-2.5 text-sm bg-transparent focus:outline-none"
+              style={{ border: "1px solid #D9CDB8", color: "#0F0A06" }}
               required
-              autoFocus
+              autoComplete="current-password"
             />
           </div>
 
           {error && (
-            <p className="text-sm text-signal">{error}</p>
+            <div className="p-3 text-sm" style={{ background: "#F7EBE6", border: "1px solid #A33B2A", color: "#7E2A1D" }}>
+              {error}
+              {retryAfter && retryAfter > 0 && (
+                <div className="text-[11px] mt-1 opacity-70">
+                  Bitte warten Sie {retryAfter} Sekunden.
+                </div>
+              )}
+            </div>
           )}
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-green text-white py-3 text-sm font-medium hover:bg-green/90 disabled:opacity-50"
+            disabled={isPending}
+            className="w-full py-3.5 text-[11px] font-bold uppercase tracking-[0.18em] disabled:opacity-50 inline-flex items-center justify-center gap-2"
+            style={{ background: "#0F0A06", color: "#FAFAF7" }}
           >
-            {loading ? "..." : "Anmelden"}
+            {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+            Anmelden
           </button>
         </form>
+
+        <p className="text-[10px] uppercase tracking-[0.18em] text-center mt-6" style={{ color: "#8A7866" }}>
+          Nur für autorisierte Mitarbeiter
+        </p>
       </div>
-    </div>
+    </main>
   );
+}
+
+function translateError(code: string): string {
+  switch (code) {
+    case "INVALID_CREDENTIALS":
+      return "E-Mail oder Passwort falsch.";
+    case "ACCOUNT_LOCKED":
+      return "Konto vorübergehend gesperrt nach zu vielen Fehlversuchen.";
+    case "RATE_LIMITED":
+      return "Zu viele Anmeldeversuche. Bitte später erneut versuchen.";
+    case "INVALID_INPUT":
+      return "Bitte E-Mail und Passwort eingeben.";
+    default:
+      return "Login fehlgeschlagen.";
+  }
 }

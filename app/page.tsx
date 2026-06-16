@@ -59,18 +59,18 @@ export default async function Home() {
     <>
       {/* ── HERO — EDITORIAL SPLIT ── */}
       <section
-        className="relative pt-32 pb-16 md:pt-36 md:pb-24 overflow-hidden"
+        className="relative pt-24 pb-10 md:pt-24 md:pb-14 overflow-hidden"
         style={{
           background:
             "radial-gradient(ellipse at 15% 20%, #F6EEDB 0%, #EFE6D2 45%, #E8DEC4 100%)",
         }}
       >
         <div className="relative max-w-page mx-auto px-6 md:px-12">
-          <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-12 lg:gap-20 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-10 lg:gap-16 items-center">
 
-            <div className="order-2 lg:order-1">
+            <div className="order-1 lg:order-1">
               <div
-                className="inline-flex items-center gap-3 rounded-full px-4 py-1.5 mb-10"
+                className="inline-flex items-center gap-3 rounded-full px-4 py-1.5 mb-5"
                 style={{ background: "#FAF5E6", border: "1px solid #D9CDB8" }}
               >
                 <span className="live-dot" />
@@ -83,15 +83,15 @@ export default async function Home() {
               </div>
 
               <h1
-                className="font-serif leading-[0.92] mb-10"
-                style={{ fontSize: "clamp(3rem, 7vw, 6.5rem)", color: "#0F0A06", letterSpacing: "-0.015em" }}
+                className="font-serif leading-[0.92] mb-5"
+                style={{ fontSize: "clamp(2.5rem, 5.2vw, 5rem)", color: "#0F0A06", letterSpacing: "-0.015em" }}
               >
                 Direkt vom<br />
                 <span style={{ color: "#A33B2A" }}>Knüpfer.</span>
               </h1>
 
               <p
-                className="text-lg md:text-xl leading-snug mb-12"
+                className="text-base md:text-lg leading-snug mb-7"
                 style={{ color: "#5A4A3A", maxWidth: "32ch" }}
               >
                 Kein Großhandel. Kein Mittler. Kein Aufschlag.
@@ -99,30 +99,30 @@ export default async function Home() {
               </p>
 
               <div
-                className="grid grid-cols-3 gap-6 mb-12 pt-8 pb-8"
+                className="grid grid-cols-3 gap-6 mb-7 pt-5 pb-5"
                 style={{ borderTop: "1px solid #D9CDB8", borderBottom: "1px solid #D9CDB8" }}
               >
                 <div>
-                  <p className="font-serif" style={{ fontSize: "clamp(2.2rem, 4vw, 3.2rem)", color: "#0F0A06", lineHeight: "1" }}>
+                  <p className="font-serif" style={{ fontSize: "clamp(1.8rem, 3vw, 2.4rem)", color: "#0F0A06", lineHeight: "1" }}>
                     47
                   </p>
-                  <p className="text-[10px] uppercase tracking-[0.18em] mt-2" style={{ color: "#8A7866" }}>
+                  <p className="text-[10px] uppercase tracking-[0.18em] mt-1.5" style={{ color: "#8A7866" }}>
                     Knüpfer-<br />Familien
                   </p>
                 </div>
                 <div>
-                  <p className="font-serif" style={{ fontSize: "clamp(2.2rem, 4vw, 3.2rem)", color: "#0F0A06", lineHeight: "1" }}>
+                  <p className="font-serif" style={{ fontSize: "clamp(1.8rem, 3vw, 2.4rem)", color: "#0F0A06", lineHeight: "1" }}>
                     8
                   </p>
-                  <p className="text-[10px] uppercase tracking-[0.18em] mt-2" style={{ color: "#8A7866" }}>
+                  <p className="text-[10px] uppercase tracking-[0.18em] mt-1.5" style={{ color: "#8A7866" }}>
                     Herkunfts-<br />länder
                   </p>
                 </div>
                 <div>
-                  <p className="font-serif" style={{ fontSize: "clamp(2.2rem, 4vw, 3.2rem)", color: "#0F0A06", lineHeight: "1" }}>
+                  <p className="font-serif" style={{ fontSize: "clamp(1.8rem, 3vw, 2.4rem)", color: "#0F0A06", lineHeight: "1" }}>
                     20<span style={{ color: "#A33B2A" }}>+</span>
                   </p>
-                  <p className="text-[10px] uppercase tracking-[0.18em] mt-2" style={{ color: "#8A7866" }}>
+                  <p className="text-[10px] uppercase tracking-[0.18em] mt-1.5" style={{ color: "#8A7866" }}>
                     Jahre<br />Direktimport
                   </p>
                 </div>
@@ -131,7 +131,7 @@ export default async function Home() {
               <div className="flex flex-wrap items-center gap-6">
                 <Link
                   href="#bestseller"
-                  className="inline-flex items-center gap-3 px-8 py-4 text-[11px] font-bold uppercase tracking-[0.18em]"
+                  className="inline-flex items-center gap-3 px-7 py-3.5 text-[11px] font-bold uppercase tracking-[0.18em]"
                   style={{ background: "#0F0A06", color: "#FAFAF7" }}
                 >
                   Bestseller entdecken
@@ -147,7 +147,7 @@ export default async function Home() {
               </div>
             </div>
 
-            <div className="order-1 lg:order-2 relative">
+            <div className="order-2 lg:order-2 relative">
               <HeroCarousel
                 items={allProducts.slice(0, 5).map((p) => ({
                   slug: p.slug,

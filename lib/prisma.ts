@@ -1,4 +1,7 @@
 import { PrismaClient } from "@prisma/client";
+import { DATABASE_URL } from "./config";
+
+void DATABASE_URL;
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 

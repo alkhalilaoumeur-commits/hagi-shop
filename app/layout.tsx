@@ -5,6 +5,7 @@ import { Footer } from "@/components/layout/Footer";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { WhatsAppBerater } from "@/components/layout/WhatsAppBerater";
 import { CookieBanner } from "@/components/layout/CookieBanner";
+import { APP_URL } from "@/lib/config";
 
 // TODO: Domain + Shopname nach Klärungsgespräch anpassen
 export const metadata: Metadata = {
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
   },
   description:
     "Hochwertige orientalische und moderne Teppiche in Stuttgart. Direkt vom Importeur — Kelim, Persian, Handgeknüpft. Versand oder Selbstabholung.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(APP_URL),
   openGraph: {
     type: "website",
     locale: "de_DE",

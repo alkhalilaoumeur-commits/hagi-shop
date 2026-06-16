@@ -913,7 +913,7 @@ export const WORKFLOWS: Workflow[] = [
     stage: "stage-5",
     status: "planned",
     summary: "Customer-Recht auf Auskunft + Löschung. Orders bleiben (Buchhaltungs-Pflicht 10 Jahre).",
-    trigger: "Customer-Email an datenschutz@hagi-teppiche.de",
+    trigger: "Customer-Email an datenschutz@hagi-shop.de",
     steps: [
       "Hagi erhält Anfrage per Mail",
       "Admin-Dashboard: 'Customer suchen'",

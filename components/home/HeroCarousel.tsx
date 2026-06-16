@@ -56,7 +56,7 @@ export function HeroCarousel({ items }: Props) {
       </div>
 
       <div
-        className="relative w-full h-[440px] md:h-[560px] flex items-center justify-center"
+        className="relative w-full h-[380px] md:h-[460px] flex items-center justify-center"
         style={{ perspective: "1400px" }}
       >
         {items.map((item, i) => {
@@ -136,7 +136,7 @@ export function HeroCarousel({ items }: Props) {
         )}
       </div>
 
-      <div className="grid grid-cols-[1fr_auto] gap-4 mt-8 items-end">
+      <div className="grid grid-cols-[1fr_auto] gap-4 mt-5 items-end">
         <div key={active.slug} style={{ animation: "captionIn 0.5s cubic-bezier(0.16,1,0.3,1) both" }}>
           <p className="text-[10px] uppercase tracking-[0.2em] mb-1.5" style={{ color: "#B89968" }}>
             {active.originCity ?? active.origin ?? "Direktimport"}
@@ -161,7 +161,7 @@ export function HeroCarousel({ items }: Props) {
         </Link>
       </div>
 
-      <div className="flex gap-2 justify-center mt-8">
+      <div className="flex gap-2 justify-center mt-5">
         {items.map((_, i) => (
           <button
             key={i}
