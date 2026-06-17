@@ -254,6 +254,106 @@ export async function cancelOrder(
   return { skipped: false };
 }
 
+/**
+ * Refund eines widerrufenen Auftrags nach BGB § 357.
+ *
+ * **Sicherheits-Garantien (hart):**
+ *  - Nur admin/system dürfen refundieren (Customer kann es NIE selbst auslösen)
+ *  - Voraussetzung: withdrawalRequestedAt MUSS gesetzt sein
+ *  - Wenn Order versandt war (fulfillmentStatus=FULFILLED), MUSS returnReceivedAt
+ *    gesetzt sein (Ware physisch zurück). Phase 1 (UNFULFILLED) erlaubt
+ *    Direkt-Refund ohne Rückversand.
+ *  - Idempotent: doppelter Call mit gleichem Betrag → skipped
+ *
+ * Dies verhindert das Szenario: "Customer behauptet Rückgabe, Admin sieht aber
+ * keinen Eingang" — der Refund kann ohne explizite Admin-Quittung nicht laufen.
+ */
+export async function refundWithdrawnOrder(
+  orderId: string,
+  params: { refundCents: number },
+  actor: ActorContext,
+): Promise<{ skipped: boolean }> {
+  if (actor.actorType !== "admin" && actor.actorType !== "system") {
+    throw new Error("FORBIDDEN_ACTOR");
+  }
+  if (params.refundCents <= 0) throw new Error("REFUND_AMOUNT_INVALID");
+
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: {
+      id: true,
+      orderStatus: true,
+      paymentStatus: true,
+      fulfillmentStatus: true,
+      withdrawalRequestedAt: true,
+      returnReceivedAt: true,
+      totalCents: true,
+      refundedCents: true,
+      customerEmail: true,
+      orderNumber: true,
+      billingFirstName: true,
+      discountCode: true,
+    },
+  });
+  if (!order) throw new Error("ORDER_NOT_FOUND");
+  if (!order.withdrawalRequestedAt) throw new Error("NO_WITHDRAWAL");
+  if (order.paymentStatus === "REFUNDED") return { skipped: true };
+  if (params.refundCents > order.totalCents - order.refundedCents) {
+    throw new Error("REFUND_EXCEEDS_PAID");
+  }
+
+  // KERN-GUARD: Wenn Order versandt war, muss Ware physisch zurück sein.
+  if (order.fulfillmentStatus === "FULFILLED" && !order.returnReceivedAt) {
+    throw new Error("RETURN_NOT_RECEIVED");
+  }
+
+  const updated = await prisma.order.updateMany({
+    where: { id: orderId, paymentStatus: { not: "REFUNDED" }, withdrawalRequestedAt: { not: null } },
+    data: {
+      paymentStatus: params.refundCents >= order.totalCents - order.refundedCents ? "REFUNDED" : "PARTIALLY_REFUNDED",
+      orderStatus: "CANCELLED",
+      cancelReason: "withdrawal",
+      cancelledAt: new Date(),
+      refundedCents: order.refundedCents + params.refundCents,
+      refundedAt: new Date(),
+    },
+  });
+  if (updated.count === 0) return { skipped: true };
+
+  if (order.discountCode) {
+    await releaseDiscount(order.discountCode);
+  }
+
+  await logAudit({
+    actorType: actor.actorType,
+    actorId: actor.actorId,
+    action: "order.withdrawal_refunded",
+    entityType: "Order",
+    entityId: orderId,
+    after: { refundCents: params.refundCents },
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  });
+
+  try {
+    await sendCancellationNotification(order.customerEmail, {
+      customerFirstName: order.billingFirstName,
+      orderNumber: order.orderNumber,
+      reason: "Ihr Widerruf wurde bearbeitet, das Geld ist auf dem Weg.",
+      refundCents: params.refundCents,
+    });
+  } catch (err) {
+    console.error("[lifecycle] withdrawal refund mail failed", err);
+  }
+
+  return { skipped: false };
+}
+
+/**
+ * Customer-Widerruf nach BGB § 355.
+ * Setzt withdrawalRequestedAt + withdrawalReason atomar via updateMany-Guard.
+ * KEIN Refund — der erfolgt separat NACH markReturnReceived.
+ */
 export async function registerWithdrawal(
   orderId: string,
   params: { reason?: string },
@@ -264,18 +364,18 @@ export async function registerWithdrawal(
   if (order.orderStatus !== "COMPLETED" && order.orderStatus !== "CONFIRMED") {
     throw new Error("ORDER_NOT_RETURNABLE");
   }
-
-  if (order.internalNote?.includes("Widerruf eingegangen")) {
+  if (order.withdrawalRequestedAt) {
     return { skipped: true };
   }
 
-  const note = `Widerruf eingegangen ${new Date().toISOString()}${params.reason ? ` — ${params.reason.slice(0, 200)}` : ""}`;
-  const combinedNote = [order.internalNote, note].filter(Boolean).join("\n");
-
-  await prisma.order.update({
-    where: { id: orderId },
-    data: { internalNote: combinedNote },
+  const updated = await prisma.order.updateMany({
+    where: { id: orderId, withdrawalRequestedAt: null, orderStatus: { not: "CANCELLED" } },
+    data: {
+      withdrawalRequestedAt: new Date(),
+      withdrawalReason: params.reason?.slice(0, 2000) ?? null,
+    },
   });
+  if (updated.count === 0) return { skipped: true };
 
   await logAudit({
     actorType: actor.actorType,
@@ -297,6 +397,56 @@ export async function registerWithdrawal(
   } catch (err) {
     console.error("[lifecycle] withdrawal mail failed", err);
   }
+
+  return { skipped: false };
+}
+
+/**
+ * Admin markiert: Ware ist physisch zurück.
+ *
+ * **WICHTIG (Sicherheits-Gate):**
+ *  - Nur admin/system dürfen das setzen, NIE customer (Server-Action garantiert das)
+ *  - Voraussetzung: withdrawalRequestedAt MUSS gesetzt sein (sonst NO_WITHDRAWAL)
+ *  - Idempotent: doppelter Call → skipped:true
+ *
+ * Erst danach darf der Refund laufen (siehe cancelOrder Refund-Guard).
+ */
+export async function markReturnReceived(
+  orderId: string,
+  params: { trackingNumber?: string | null },
+  actor: ActorContext,
+): Promise<{ skipped: boolean }> {
+  if (actor.actorType !== "admin" && actor.actorType !== "system") {
+    throw new Error("FORBIDDEN_ACTOR");
+  }
+
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { id: true, withdrawalRequestedAt: true, returnReceivedAt: true, customerEmail: true, orderNumber: true },
+  });
+  if (!order) throw new Error("ORDER_NOT_FOUND");
+  if (!order.withdrawalRequestedAt) throw new Error("NO_WITHDRAWAL");
+  if (order.returnReceivedAt) return { skipped: true };
+
+  const updated = await prisma.order.updateMany({
+    where: { id: orderId, withdrawalRequestedAt: { not: null }, returnReceivedAt: null },
+    data: {
+      returnReceivedAt: new Date(),
+      returnTrackingNumber: params.trackingNumber?.slice(0, 200) ?? null,
+    },
+  });
+  if (updated.count === 0) return { skipped: true };
+
+  await logAudit({
+    actorType: actor.actorType,
+    actorId: actor.actorId,
+    action: "order.return_received",
+    entityType: "Order",
+    entityId: orderId,
+    after: { trackingNumber: params.trackingNumber ?? null },
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  });
 
   return { skipped: false };
 }

@@ -35,7 +35,8 @@ export function Footer() {
             <Link href="/impressum" className="hover:text-gold transition-colors">Impressum</Link>
             <Link href="/datenschutz" className="hover:text-gold transition-colors">Datenschutz</Link>
             <Link href="/agb" className="hover:text-gold transition-colors">AGB</Link>
-            <Link href="/widerruf" className="hover:text-gold transition-colors">Widerruf</Link>
+            <Link href="/widerruf" className="hover:text-gold transition-colors">Widerrufsbelehrung</Link>
+            <Link href="/widerruf-antrag" className="hover:text-gold transition-colors">Widerruf einreichen</Link>
             <Link href="/kontakt" className="hover:text-gold transition-colors">Kontakt</Link>
           </nav>
         </div>

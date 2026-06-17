@@ -43,6 +43,8 @@ export interface OrderForWithdrawal {
   deliveredAt: Date | null;
   cancelledAt?: Date | null;
   withdrawalNoticeGiven?: boolean;
+  withdrawalRequestedAt?: Date | null;
+  /** Veraltet — bleibt nur für Backwards-Compat-Tests; neue Logik nutzt withdrawalRequestedAt. */
   internalNote?: string | null;
 }
 
@@ -73,7 +75,7 @@ export function isWithdrawalEligible(
   if (order.orderStatus === "CANCELLED") {
     return { eligible: false, reason: "ORDER_ALREADY_CANCELLED" };
   }
-  if (order.internalNote?.includes("Widerruf eingegangen")) {
+  if (order.withdrawalRequestedAt || order.internalNote?.includes("Widerruf eingegangen")) {
     return { eligible: false, reason: "ORDER_ALREADY_WITHDRAWN" };
   }
   if (order.paymentStatus !== "PAID" && order.paymentStatus !== "PARTIALLY_REFUNDED") {

@@ -263,6 +263,15 @@ export default async function TrackingPage({ params }: Props) {
           >
             {CONTACT_EMAIL} →
           </a>
+          <div className="mt-8 pt-8" style={{ borderTop: "1px solid #5A4A3A" }}>
+            <Link
+              href={`/widerruf-antrag/${token}`}
+              className="text-[11px] uppercase tracking-[0.18em] pb-0.5 inline-block"
+              style={{ color: "#A33B2A", borderBottom: "1px solid #A33B2A" }}
+            >
+              Bestellung widerrufen →
+            </Link>
+          </div>
         </div>
       </section>
     </main>

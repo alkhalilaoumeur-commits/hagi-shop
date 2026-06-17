@@ -354,6 +354,17 @@ model Order {
   internalNote String?
   tags         String[]
 
+  // Widerruf-Workflow (BGB § 355). Getrennt vom Refund-State.
+  // withdrawalRequestedAt = Customer hat Widerruf eingereicht
+  // returnReceivedAt      = Admin hat Ware physisch wieder erhalten
+  // Nur wenn returnReceivedAt gesetzt (oder Order war nie versandt),
+  // darf das Geld zurück. Verhindert Refund-Betrug.
+  withdrawalRequestedAt DateTime?
+  withdrawalReason      String?
+  withdrawalNoticeGiven Boolean  @default(true)
+  returnReceivedAt      DateTime?
+  returnTrackingNumber  String?
+
   createdAt    DateTime  @default(now())
   confirmedAt  DateTime?
   paidAt       DateTime?

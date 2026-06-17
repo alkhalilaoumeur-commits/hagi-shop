@@ -3,7 +3,13 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { adminMarkShipped, adminMarkDelivered, adminCancelOrder } from "@/app/actions/admin-orders";
+import {
+  adminMarkShipped,
+  adminMarkDelivered,
+  adminCancelOrder,
+  adminMarkReturnReceived,
+  adminRefundWithdrawal,
+} from "@/app/actions/admin-orders";
 
 interface Props {
   orderId: string;
@@ -11,11 +17,23 @@ interface Props {
   paymentStatus: string;
   fulfillmentStatus: string;
   totalCents: number;
+  refundedCents: number;
+  withdrawalRequestedAt: Date | null;
+  returnReceivedAt: Date | null;
 }
 
-export function OrderActions({ orderId, orderStatus, paymentStatus, fulfillmentStatus, totalCents }: Props) {
+export function OrderActions({
+  orderId,
+  orderStatus,
+  paymentStatus,
+  fulfillmentStatus,
+  totalCents,
+  refundedCents,
+  withdrawalRequestedAt,
+  returnReceivedAt,
+}: Props) {
   const router = useRouter();
-  const [activeForm, setActiveForm] = useState<"ship" | "deliver" | "cancel" | null>(null);
+  const [activeForm, setActiveForm] = useState<"ship" | "deliver" | "cancel" | "return" | "refund" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -27,6 +45,13 @@ export function OrderActions({ orderId, orderStatus, paymentStatus, fulfillmentS
   const canDeliver = orderStatus === "CONFIRMED" && fulfillmentStatus === "FULFILLED";
 
   const canCancel = orderStatus !== "CANCELLED" && orderStatus !== "COMPLETED" && fulfillmentStatus !== "FULFILLED";
+
+  const hasActiveWithdrawal = withdrawalRequestedAt !== null && paymentStatus !== "REFUNDED";
+  const canMarkReturn = hasActiveWithdrawal && fulfillmentStatus === "FULFILLED" && returnReceivedAt === null;
+  const canRefundWithdrawal =
+    hasActiveWithdrawal &&
+    (fulfillmentStatus === "UNFULFILLED" || returnReceivedAt !== null) &&
+    refundedCents < totalCents;
 
   const refresh = () => {
     setActiveForm(null);
@@ -44,17 +69,42 @@ export function OrderActions({ orderId, orderStatus, paymentStatus, fulfillmentS
       </p>
 
       {activeForm === null && (
-        <div className="flex flex-wrap gap-3">
-          <ActionButton enabled={canShip} onClick={() => setActiveForm("ship")} primary>
-            Als versendet markieren
-          </ActionButton>
-          <ActionButton enabled={canDeliver} onClick={() => setActiveForm("deliver")}>
-            Als zugestellt markieren
-          </ActionButton>
-          <ActionButton enabled={canCancel} onClick={() => setActiveForm("cancel")} danger>
-            Stornieren
-          </ActionButton>
-        </div>
+        <>
+          {hasActiveWithdrawal && (
+            <div
+              className="mb-4 px-4 py-3 text-[11px] uppercase tracking-[0.15em]"
+              style={{ background: "#FAEDE9", border: "1px solid #A33B2A", color: "#7E2A1D" }}
+            >
+              Aktiver Widerruf seit {withdrawalRequestedAt?.toLocaleString("de-DE")}
+              {returnReceivedAt
+                ? " — Ware retourniert"
+                : fulfillmentStatus === "FULFILLED"
+                ? " — Ware NOCH NICHT eingegangen"
+                : " — Versand war noch nicht raus"}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-3">
+            <ActionButton enabled={canShip} onClick={() => setActiveForm("ship")} primary>
+              Als versendet markieren
+            </ActionButton>
+            <ActionButton enabled={canDeliver} onClick={() => setActiveForm("deliver")}>
+              Als zugestellt markieren
+            </ActionButton>
+            {hasActiveWithdrawal && (
+              <ActionButton enabled={canMarkReturn} onClick={() => setActiveForm("return")}>
+                Ware retourniert
+              </ActionButton>
+            )}
+            {hasActiveWithdrawal && (
+              <ActionButton enabled={canRefundWithdrawal} onClick={() => setActiveForm("refund")} primary>
+                Widerruf erstatten
+              </ActionButton>
+            )}
+            <ActionButton enabled={canCancel} onClick={() => setActiveForm("cancel")} danger>
+              Stornieren
+            </ActionButton>
+          </div>
+        </>
       )}
 
       {activeForm === "ship" && (
@@ -89,6 +139,29 @@ export function OrderActions({ orderId, orderStatus, paymentStatus, fulfillmentS
         <CancelForm
           orderId={orderId}
           totalCents={totalCents}
+          onCancel={() => setActiveForm(null)}
+          onError={setError}
+          isPending={isPending}
+          startTransition={startTransition}
+          refresh={refresh}
+        />
+      )}
+
+      {activeForm === "return" && (
+        <ReturnForm
+          orderId={orderId}
+          onCancel={() => setActiveForm(null)}
+          onError={setError}
+          isPending={isPending}
+          startTransition={startTransition}
+          refresh={refresh}
+        />
+      )}
+
+      {activeForm === "refund" && (
+        <WithdrawalRefundForm
+          orderId={orderId}
+          maxRefundCents={totalCents - refundedCents}
           onCancel={() => setActiveForm(null)}
           onError={setError}
           isPending={isPending}
@@ -330,6 +403,153 @@ function CancelForm({
         >
           {isPending && <Loader2 className="w-3 h-3 animate-spin" />}
           Stornieren + Mail
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2.5 text-[11px] uppercase tracking-[0.15em]"
+          style={{ color: "#5A4A3A" }}
+        >
+          Abbrechen
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function ReturnForm({
+  orderId,
+  onCancel,
+  onError,
+  isPending,
+  startTransition,
+  refresh,
+}: {
+  orderId: string;
+  onCancel: () => void;
+  onError: (e: string) => void;
+  isPending: boolean;
+  startTransition: (cb: () => void) => void;
+  refresh: () => void;
+}) {
+  const [trackingNumber, setTrackingNumber] = useState("");
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        startTransition(async () => {
+          const result = await adminMarkReturnReceived({
+            orderId,
+            trackingNumber: trackingNumber.trim() || null,
+          });
+          if (result.ok) refresh();
+          else onError(result.error);
+        });
+      }}
+      className="space-y-4"
+    >
+      <div>
+        <label className="block text-[11px] uppercase tracking-[0.15em] mb-1.5" style={{ color: "#5A4A3A" }}>
+          Rücksendungs-Tracking (optional)
+        </label>
+        <input
+          type="text"
+          value={trackingNumber}
+          onChange={(e) => setTrackingNumber(e.target.value)}
+          placeholder="z.B. DHL-Sendungsnummer"
+          maxLength={200}
+          className="w-full px-3 py-2 font-mono text-sm"
+          style={{ background: "#FFFFFF", border: "1px solid #D9CDB8" }}
+        />
+      </div>
+      <p className="text-[11px]" style={{ color: "#5A4A3A" }}>
+        Wichtig: nur klicken WENN die Ware physisch hier eingegangen und kontrolliert ist.
+        Erst danach kann der Refund gestartet werden.
+      </p>
+      <div className="flex gap-3">
+        <button
+          type="submit"
+          disabled={isPending}
+          className="px-6 py-2.5 text-[11px] font-bold uppercase tracking-[0.18em] disabled:opacity-50 inline-flex items-center gap-2"
+          style={{ background: "#0F0A06", color: "#FAFAF7" }}
+        >
+          {isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+          Eingang bestätigen
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2.5 text-[11px] uppercase tracking-[0.15em]"
+          style={{ color: "#5A4A3A" }}
+        >
+          Abbrechen
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function WithdrawalRefundForm({
+  orderId,
+  maxRefundCents,
+  onCancel,
+  onError,
+  isPending,
+  startTransition,
+  refresh,
+}: {
+  orderId: string;
+  maxRefundCents: number;
+  onCancel: () => void;
+  onError: (e: string) => void;
+  isPending: boolean;
+  startTransition: (cb: () => void) => void;
+  refresh: () => void;
+}) {
+  const [eurValue, setEurValue] = useState((maxRefundCents / 100).toFixed(2));
+  const cents = Math.round(parseFloat(eurValue.replace(",", ".") || "0") * 100);
+  const invalid = !cents || cents <= 0 || cents > maxRefundCents;
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (invalid) return;
+        startTransition(async () => {
+          const result = await adminRefundWithdrawal({ orderId, refundCents: cents });
+          if (result.ok) refresh();
+          else onError(result.error);
+        });
+      }}
+      className="space-y-4"
+    >
+      <div>
+        <label className="block text-[11px] uppercase tracking-[0.15em] mb-1.5" style={{ color: "#5A4A3A" }}>
+          Erstattungsbetrag (max {(maxRefundCents / 100).toFixed(2)} €)
+        </label>
+        <input
+          type="text"
+          value={eurValue}
+          onChange={(e) => setEurValue(e.target.value)}
+          inputMode="decimal"
+          className="w-full px-3 py-2 font-mono text-sm"
+          style={{ background: "#FFFFFF", border: "1px solid #D9CDB8" }}
+        />
+      </div>
+      <p className="text-[11px]" style={{ color: "#5A4A3A" }}>
+        Voll-Widerruf: Kaufpreis inkl. Hin-Versand zurück (§ 357 Abs. 2 BGB).
+        Den eigentlichen Stripe-Refund musst du im Stripe-Dashboard auslösen — diese Aktion
+        setzt nur den Order-State + Mail an Kunden.
+      </p>
+      <div className="flex gap-3">
+        <button
+          type="submit"
+          disabled={isPending || invalid}
+          className="px-6 py-2.5 text-[11px] font-bold uppercase tracking-[0.18em] disabled:opacity-50 inline-flex items-center gap-2"
+          style={{ background: "#0F0A06", color: "#FAFAF7" }}
+        >
+          {isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+          Refund eintragen
         </button>
         <button
           type="button"

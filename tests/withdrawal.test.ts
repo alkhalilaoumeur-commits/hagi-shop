@@ -30,11 +30,12 @@ describe("Widerruf — registerWithdrawal (existierende Funktion)", () => {
     await cleanupOrder(orderId);
   });
 
-  it("Widerruf für COMPLETED-Order: skipped:false, internalNote bekommt 'Widerruf eingegangen'", async () => {
+  it("Widerruf für COMPLETED-Order: skipped:false, withdrawalRequestedAt + withdrawalReason gesetzt", async () => {
     const r = await registerWithdrawal(orderId, { reason: "passt nicht" }, ACTOR);
     expect(r.skipped).toBe(false);
     const o = await prisma.order.findUnique({ where: { id: orderId } });
-    expect(o?.internalNote).toContain("Widerruf eingegangen");
+    expect(o?.withdrawalRequestedAt).not.toBeNull();
+    expect(o?.withdrawalReason).toBe("passt nicht");
   });
 
   it("Widerruf doppelt → skipped:true (Idempotenz)", async () => {
@@ -73,11 +74,11 @@ describe("Widerruf — registerWithdrawal (existierende Funktion)", () => {
     await cleanupOrder(order.id);
   });
 
-  it("Widerruf-Grund wird im internalNote auf 200 chars abgeschnitten", async () => {
-    const longReason = "A".repeat(500);
+  it("Widerruf-Grund wird auf 2000 chars abgeschnitten", async () => {
+    const longReason = "A".repeat(3000);
     await registerWithdrawal(orderId, { reason: longReason }, ACTOR);
     const o = await prisma.order.findUnique({ where: { id: orderId } });
-    expect((o?.internalNote ?? "").length).toBeLessThan(longReason.length + 100);
+    expect((o?.withdrawalReason ?? "").length).toBe(2000);
   });
 });
 

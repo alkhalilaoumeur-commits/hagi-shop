@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { requireAdmin } from "@/lib/services/admin-auth";
-import { markOrderShipped, markOrderDelivered, cancelOrder } from "@/lib/services/order-lifecycle";
+import { markOrderShipped, markOrderDelivered, cancelOrder, markReturnReceived, refundWithdrawnOrder } from "@/lib/services/order-lifecycle";
 import { extractIp } from "@/lib/services/rate-limit";
 
 const shipSchema = z.object({
@@ -96,6 +96,50 @@ export async function adminCancelOrder(rawInput: unknown): Promise<ActionResult>
     );
     revalidatePath(`/admin/bestellungen/${parsed.data.orderId}`);
     revalidatePath("/admin/bestellungen");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message.slice(0, 80) : "UNKNOWN" };
+  }
+}
+
+const returnReceivedSchema = z.object({
+  orderId: z.string().min(1).max(128),
+  trackingNumber: z.string().max(200).optional().nullable(),
+});
+
+export async function adminMarkReturnReceived(rawInput: unknown): Promise<ActionResult> {
+  const parsed = returnReceivedSchema.safeParse(rawInput);
+  if (!parsed.success) return { ok: false, error: "INVALID_INPUT" };
+  const ctx = await actorContext();
+  try {
+    await markReturnReceived(
+      parsed.data.orderId,
+      { trackingNumber: parsed.data.trackingNumber },
+      { actorType: ctx.actorType, actorId: ctx.actorId, ipAddress: ctx.ipAddress, userAgent: ctx.userAgent },
+    );
+    revalidatePath(`/admin/bestellungen/${parsed.data.orderId}`);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message.slice(0, 80) : "UNKNOWN" };
+  }
+}
+
+const refundWithdrawalSchema = z.object({
+  orderId: z.string().min(1).max(128),
+  refundCents: z.number().int().positive().max(10_000_000),
+});
+
+export async function adminRefundWithdrawal(rawInput: unknown): Promise<ActionResult> {
+  const parsed = refundWithdrawalSchema.safeParse(rawInput);
+  if (!parsed.success) return { ok: false, error: "INVALID_INPUT" };
+  const ctx = await actorContext();
+  try {
+    await refundWithdrawnOrder(
+      parsed.data.orderId,
+      { refundCents: parsed.data.refundCents },
+      { actorType: ctx.actorType, actorId: ctx.actorId, ipAddress: ctx.ipAddress, userAgent: ctx.userAgent },
+    );
+    revalidatePath(`/admin/bestellungen/${parsed.data.orderId}`);
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message.slice(0, 80) : "UNKNOWN" };

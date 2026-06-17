@@ -93,6 +93,9 @@ export default async function OrderDetailPage({ params }: Props) {
         paymentStatus={order.paymentStatus}
         fulfillmentStatus={order.fulfillmentStatus}
         totalCents={order.totalCents}
+        refundedCents={order.refundedCents}
+        withdrawalRequestedAt={order.withdrawalRequestedAt}
+        returnReceivedAt={order.returnReceivedAt}
       />
 
       <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
