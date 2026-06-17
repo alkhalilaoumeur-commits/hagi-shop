@@ -41,6 +41,7 @@ interface OrderFactoryOpts {
   deliveredAt?: Date | null;
   paidAt?: Date | null;
   confirmedAt?: Date | null;
+  stripePaymentIntentId?: string | null;
 }
 
 export async function makeOrder(opts: OrderFactoryOpts = {}) {
@@ -69,6 +70,7 @@ export async function makeOrder(opts: OrderFactoryOpts = {}) {
     paidAt: opts.paidAt ?? null,
     confirmedAt: opts.confirmedAt ?? null,
     deliveredAt: opts.deliveredAt ?? null,
+    stripePaymentIntentId: opts.stripePaymentIntentId ?? null,
     billingFirstName: "Test",
     billingLastName: "User",
     billingStreet1: "Teststraße 1",
@@ -110,6 +112,8 @@ export async function makeOrder(opts: OrderFactoryOpts = {}) {
 }
 
 export async function cleanupOrder(orderId: string) {
+  await prisma.refundItem.deleteMany({ where: { refund: { orderId } } }).catch(() => {});
+  await prisma.refund.deleteMany({ where: { orderId } }).catch(() => {});
   await prisma.fulfillmentItem.deleteMany({ where: { fulfillment: { orderId } } }).catch(() => {});
   await prisma.fulfillment.deleteMany({ where: { orderId } }).catch(() => {});
   await prisma.auditLog.deleteMany({ where: { entityType: "Order", entityId: orderId } }).catch(() => {});

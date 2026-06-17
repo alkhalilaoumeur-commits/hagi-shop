@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { getStripe } from "@/lib/stripe";
 import { logAudit, type ActorType } from "./audit";
 import { releaseDiscount } from "./discount";
 import {
@@ -293,6 +294,7 @@ export async function refundWithdrawnOrder(
       orderNumber: true,
       billingFirstName: true,
       discountCode: true,
+      stripePaymentIntentId: true,
     },
   });
   if (!order) throw new Error("ORDER_NOT_FOUND");
@@ -307,6 +309,52 @@ export async function refundWithdrawnOrder(
     throw new Error("RETURN_NOT_RECEIVED");
   }
 
+  // ECHTER STRIPE-REFUND — VOR der DB-Markierung.
+  // Geld-Sicherheit: Wir markieren die Order erst dann als erstattet, wenn das
+  // Geld bei Stripe real ausgelöst wurde. Schlägt Stripe fehl, bleibt der
+  // Status unverändert → Admin kann erneut auslösen (keine § 357-Frist-Falle).
+  // Doppel-Refund-Schutz über deterministischen Idempotency-Key: bei
+  // gleichzeitigen/wiederholten Calls liefert Stripe denselben Refund zurück.
+  let stripeRefundId: string | null = null;
+  if (order.stripePaymentIntentId) {
+    try {
+      const stripe = getStripe();
+      const refund = await stripe.refunds.create(
+        {
+          payment_intent: order.stripePaymentIntentId,
+          amount: params.refundCents,
+          reason: "requested_by_customer",
+          metadata: {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            kind: "withdrawal",
+          },
+        },
+        { idempotencyKey: `wd-refund-${order.id}-${params.refundCents}` },
+      );
+      stripeRefundId = refund.id;
+    } catch (err) {
+      // Stripe-Fehler: DB NICHT als refunded markieren. Audit + sprechender Fehler.
+      console.error("[lifecycle] Stripe-Refund fehlgeschlagen", err);
+      await logAudit({
+        actorType: actor.actorType,
+        actorId: actor.actorId,
+        action: "order.refund_failed",
+        entityType: "Order",
+        entityId: orderId,
+        after: { refundCents: params.refundCents, error: String((err as Error)?.message ?? err) },
+        ipAddress: actor.ipAddress,
+        userAgent: actor.userAgent,
+      });
+      throw new Error("STRIPE_REFUND_FAILED");
+    }
+  } else {
+    // Manuelle Order (Showroom-Walkin) oder Test ohne PaymentIntent → DB-only Refund.
+    console.warn(
+      `[lifecycle] refundWithdrawnOrder: Order ${orderId} ohne stripePaymentIntentId — DB-only Refund (manuell ausgleichen).`,
+    );
+  }
+
   const updated = await prisma.order.updateMany({
     where: { id: orderId, paymentStatus: { not: "REFUNDED" }, withdrawalRequestedAt: { not: null } },
     data: {
@@ -319,6 +367,18 @@ export async function refundWithdrawnOrder(
     },
   });
   if (updated.count === 0) return { skipped: true };
+
+  // Refund-Record als Beleg für den real ausgelösten Stripe-Refund.
+  // Nur der Gewinner des updateMany-Guards (count===1) kommt hierher → kein
+  // Konflikt mit dem @unique auf stripeRefundId bei parallelen Calls.
+  await prisma.refund.create({
+    data: {
+      orderId,
+      amountCents: params.refundCents,
+      reason: "withdrawal",
+      stripeRefundId,
+    },
+  });
 
   if (order.discountCode) {
     await releaseDiscount(order.discountCode);

@@ -4,9 +4,9 @@
 > Bei jeder größeren Änderung pflegen.
 
 **Letztes Update:** 2026-06-17
-**Letzter Commit:** `b2c8140` — feat(widerruf-pdf): Muster-Widerrufsformular nach EGBGB Anlage 2
-**Branch:** `main` (gepusht auf https://github.com/alkhalilaoumeur-commits/hagi-shop)
-**Test-Status:** 🟢 **105/105 grün** in 8 Suites
+**Letzter Commit:** `20082b9` — feat(refund): Stripe-Refund Auto-Trigger im Widerruf-Flow
+**Branch:** `main` (lokal — noch nicht gepusht)
+**Test-Status:** 🟢 **110/110 grün** in 9 Suites
 
 ---
 
@@ -20,6 +20,7 @@
 | Tracking-Page + PDF (Invoice + DeliveryNote) | 🟢 fertig |
 | Admin-Backend (Auth + Dashboard + Order-Mgmt + CSV) | 🟢 fertig |
 | Widerruf End-to-End (Customer-UI + Admin-Gates + PDF + Refund-Reminder) | 🟢 fertig |
+| Stripe-Refund Auto-Trigger (Admin-Klick erstattet real via Stripe-API) | 🟢 fertig |
 | Env-Hardening + zentraler Config-Reader | 🟢 fertig |
 | **Code Live-Gang-Ready** | **🟢 ja** |
 | Coolify-Env + Cron-Setup (manuell) | 🔴 offen |
@@ -70,7 +71,7 @@
 
 ---
 
-## Test-Verteilung (105 Tests in 8 Suites)
+## Test-Verteilung (110 Tests in 9 Suites)
 
 | Suite | Tests | Was es abdeckt |
 |---|---|---|
@@ -82,6 +83,7 @@
 | `withdrawal-security.test.ts` | 12 | G1-G8 Sicherheits-Garantien gegen Refund-Betrug |
 | `withdrawal-form-pdf.test.ts` | 5 | PDF-Header, Cache-Control, Download-Flag |
 | `refund-reminder.test.ts` | 14 | Stage-Klassifikation + Cron-Endpoint |
+| `withdrawal-refund-stripe.test.ts` | 5 | Auto-Refund via Stripe-API, Fehler-Rollback, Idempotenz, DB-only-Pfad, Partial |
 
 Plus 9 Smoke-Skripte in `scripts/test-stage-*.ts` (Pre-Vitest-Stand, laufen noch).
 
@@ -121,7 +123,7 @@ npm run test:coverage # Coverage-Report
 **Widerruf-Verbesserungen:**
 | Priorität | Task | Aufwand |
 |---|---|---|
-| Hoch | **Stripe-Refund auto-trigger** im `refundWithdrawnOrder` (aktuell muss Admin im Stripe-Dashboard klicken) | 1h |
+| ✅ erledigt | ~~**Stripe-Refund auto-trigger** im `refundWithdrawnOrder`~~ — löst Refund jetzt real via Stripe-API aus, mit Idempotency-Key + Refund-Record + Fehler-Rollback (5 Tests) | — |
 | Mittel | Wertersatz-UI bei Widerruf (§ 357 Abs. 7 BGB) mit Begründungs-Feld | 2h |
 | Niedrig | Live-Counter "noch X Tage bis Frist-Ende" auf Order-Status-Page | 1h |
 
@@ -272,8 +274,8 @@ Wenn ein Service-Call sowohl von Customer als auch Admin kommen kann: **ActorTyp
 
 **Diese Woche** — Live-bereit machen:
 1. `.env` lokal migrieren (5 min, Punkt 1 oben)
-2. Stripe-Refund-Auto-Trigger (1h, hohe Priorität in Schicht 2)
-3. Echte Test-Bestellung durchspielen (30 min)
+2. ~~Stripe-Refund-Auto-Trigger~~ ✅ erledigt
+3. Echte Test-Bestellung durchspielen (30 min) — jetzt inkl. Refund-Test (Geld geht real zurück)
 
 **Nächste Woche** — Live-Gang:
 4. Coolify-Env + Cron (30 min)
@@ -295,6 +297,7 @@ Wenn ein Service-Call sowohl von Customer als auch Admin kommen kann: **ActorTyp
 
 | Commit | Datum | Was |
 |---|---|---|
+| `20082b9` | 2026-06-17 | Stripe-Refund Auto-Trigger im Widerruf-Flow (5 Tests) |
 | `b2c8140` | 2026-06-17 | Widerrufsformular-PDF (EGBGB Anlage 2) |
 | `1b3ea85` | 2026-06-17 | Refund-Reminder § 357 BGB |
 | `856dbc8` | 2026-06-17 | Customer-Widerruf-UI + Security-Gates + 12 Tests |
