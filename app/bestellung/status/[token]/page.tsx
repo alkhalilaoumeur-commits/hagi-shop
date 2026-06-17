@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { formatPrice } from "@/lib/format";
 import { CONTACT_EMAIL } from "@/lib/shop-config";
 import { rateLimit, extractIp } from "@/lib/services/rate-limit";
+import { withdrawalDaysRemaining } from "@/lib/services/withdrawal";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,10 @@ export default async function TrackingPage({ params }: Props) {
   const currentStep = deriveCurrentStep(order.orderStatus, order.paymentStatus, order.fulfillmentStatus);
   const isCancelled = order.orderStatus === "CANCELLED";
   const fulfillment = order.fulfillments[0] ?? null;
+
+  // Live-Countdown der gesetzlichen Widerrufsfrist (force-dynamic → pro Aufruf frisch).
+  const alreadyWithdrawn = order.withdrawalRequestedAt !== null;
+  const countdown = isCancelled ? null : withdrawalDaysRemaining(order.deliveredAt, order.withdrawalNoticeGiven);
 
   return (
     <main style={{ background: "#FAFAF7" }}>
@@ -264,13 +269,37 @@ export default async function TrackingPage({ params }: Props) {
             {CONTACT_EMAIL} →
           </a>
           <div className="mt-8 pt-8" style={{ borderTop: "1px solid #5A4A3A" }}>
-            <Link
-              href={`/widerruf-antrag/${token}`}
-              className="text-[11px] uppercase tracking-[0.18em] pb-0.5 inline-block"
-              style={{ color: "#A33B2A", borderBottom: "1px solid #A33B2A" }}
-            >
-              Bestellung widerrufen →
-            </Link>
+            {alreadyWithdrawn ? (
+              <p className="text-[12px]" style={{ color: "#B89968" }}>
+                ✓ Ihr Widerruf ist eingegangen — wir bearbeiten ihn.
+              </p>
+            ) : countdown && countdown.daysRemaining <= 0 ? (
+              <p className="text-[12px]" style={{ color: "#8A7866" }}>
+                Die gesetzliche Widerrufsfrist ist am{" "}
+                {countdown.deadline.toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" })}{" "}
+                abgelaufen.
+              </p>
+            ) : (
+              <>
+                {countdown && (
+                  <p
+                    className="text-[11px] uppercase tracking-[0.18em] mb-3"
+                    style={{ color: countdown.daysRemaining <= 3 ? "#E8A87C" : "#8A7866" }}
+                  >
+                    Widerrufsrecht — noch {countdown.daysRemaining}{" "}
+                    {countdown.daysRemaining === 1 ? "Tag" : "Tage"} (bis{" "}
+                    {countdown.deadline.toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" })})
+                  </p>
+                )}
+                <Link
+                  href={`/widerruf-antrag/${token}`}
+                  className="text-[11px] uppercase tracking-[0.18em] pb-0.5 inline-block"
+                  style={{ color: "#A33B2A", borderBottom: "1px solid #A33B2A" }}
+                >
+                  Bestellung widerrufen →
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </section>

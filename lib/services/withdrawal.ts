@@ -65,6 +65,24 @@ export function calcWithdrawalDeadline(
 }
 
 /**
+ * Live-Countdown für die Widerrufsfrist (Kunden-Status-Seite).
+ *
+ * Liefert das Frist-Ende + verbleibende ganze Tage (aufgerundet, damit der
+ * letzte Tag als "1 Tag" zählt). Negativ = Frist abgelaufen. Null, solange noch
+ * nicht zugestellt wurde (Frist startet erst mit Zustellung, § 356 Abs. 2 BGB).
+ */
+export function withdrawalDaysRemaining(
+  deliveredAt: Date | null,
+  noticeGiven: boolean,
+  now: Date = new Date(),
+): { deadline: Date; daysRemaining: number } | null {
+  const deadline = calcWithdrawalDeadline(deliveredAt, noticeGiven);
+  if (!deadline) return null;
+  const daysRemaining = Math.ceil((deadline.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+  return { deadline, daysRemaining };
+}
+
+/**
  * Prüft ob eine Order zum Zeitpunkt `now` widerrufen werden kann.
  * Liefert detaillierten Reject-Grund oder { eligible: true }.
  */

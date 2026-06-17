@@ -551,7 +551,7 @@ function WithdrawalRefundForm({
             value={manualEur}
             onChange={(e) => setManualEur(e.target.value)}
             inputMode="decimal"
-            className="w-full px-3 py-2 font-mono text-sm"
+            className="w-full px-3 py-2 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-[#B89968]"
             style={{ background: "#FFFFFF", border: "1px solid #D9CDB8" }}
           />
         </div>
@@ -582,7 +582,7 @@ function WithdrawalRefundForm({
               value={wertersatzEur}
               onChange={(e) => setWertersatzEur(e.target.value)}
               inputMode="decimal"
-              className="w-full px-3 py-2 font-mono text-sm"
+              className="w-full px-3 py-2 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-[#B89968]"
               style={{ background: "#FFFFFF", border: "1px solid #D9CDB8" }}
             />
           </div>
@@ -596,7 +596,7 @@ function WithdrawalRefundForm({
               rows={3}
               placeholder="z.B. Teppich mit deutlichen Laufspuren und Fleck, nicht mehr als Neuware verkäuflich."
               maxLength={1000}
-              className="w-full px-3 py-2 text-sm"
+              className="w-full px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#B89968]"
               style={{
                 background: "#FFFFFF",
                 border: `1px solid ${reasonMissing ? "#A33B2A" : "#D9CDB8"}`,

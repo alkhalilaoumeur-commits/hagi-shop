@@ -4,9 +4,9 @@
 > Bei jeder größeren Änderung pflegen.
 
 **Letztes Update:** 2026-06-17
-**Letzter Commit:** `1537815` — feat(widerruf): Wertersatz-UI nach § 357 Abs. 7 BGB
+**Letzter Commit:** `a4b3d51` — feat(widerruf): Live-Counter Widerrufsfrist + Fokus-Kosmetik
 **Branch:** `main`
-**Test-Status:** 🟢 **116/116 grün** in 10 Suites · `tsc --noEmit` 🟢 **0 Fehler**
+**Test-Status:** 🟢 **122/122 grün** in 11 Suites · `tsc --noEmit` 🟢 **0 Fehler**
 
 ---
 
@@ -72,7 +72,7 @@
 
 ---
 
-## Test-Verteilung (116 Tests in 10 Suites)
+## Test-Verteilung (122 Tests in 11 Suites)
 
 | Suite | Tests | Was es abdeckt |
 |---|---|---|
@@ -86,6 +86,7 @@
 | `refund-reminder.test.ts` | 14 | Stage-Klassifikation + Cron-Endpoint |
 | `withdrawal-refund-stripe.test.ts` | 5 | Auto-Refund via Stripe-API, Fehler-Rollback, Idempotenz, DB-only-Pfad, Partial |
 | `withdrawal-wertersatz.test.ts` | 6 | Wertersatz § 357 Abs. 7: Netto-Refund, Pflicht-Begründung, Konsistenz-Guard, negativ |
+| `withdrawal-countdown.test.ts` | 6 | Live-Counter Widerrufsfrist: Tage-Berechnung, Frist-Start, abgelaufen, verlängert |
 
 Plus 9 Smoke-Skripte in `scripts/test-stage-*.ts` (Pre-Vitest-Stand, laufen noch).
 
@@ -127,7 +128,7 @@ npm run test:coverage # Coverage-Report
 |---|---|---|
 | ✅ erledigt | ~~**Stripe-Refund auto-trigger** im `refundWithdrawnOrder`~~ — löst Refund jetzt real via Stripe-API aus, mit Idempotency-Key + Refund-Record + Fehler-Rollback (5 Tests) | — |
 | ✅ erledigt | ~~Wertersatz-UI bei Widerruf (§ 357 Abs. 7 BGB) mit Begründungs-Feld~~ — Toggle + Pflicht-Begründung + Live-Aufschlüsselung + Kunden-Mail + 6 Tests | — |
-| Niedrig | Live-Counter "noch X Tage bis Frist-Ende" auf Order-Status-Page | 1h |
+| ✅ erledigt | ~~Live-Counter "noch X Tage bis Frist-Ende" auf Order-Status-Page~~ — dynamisch auf der Status-Seite, Warnfarbe ≤ 3 Tage, 6 Tests | — |
 
 **Admin-Verbesserungen:**
 | Priorität | Task | Aufwand |
@@ -286,7 +287,7 @@ Wenn ein Service-Call sowohl von Customer als auch Admin kommen kann: **ActorTyp
 
 **Monat 2** — Optimierung:
 7. Kunden-Account-Flow (große Sache, 4-6h)
-8. ~~Wertersatz-UI~~ ✅ + Live-Counter "noch X Tage bis Frist-Ende" (offen, 1h)
+8. ~~Wertersatz-UI~~ ✅ + ~~Live-Counter "noch X Tage bis Frist-Ende"~~ ✅
 9. Programmatic-SEO (CityPages aus SEO-Skill)
 
 **Wenn Cash da:**
@@ -299,6 +300,7 @@ Wenn ein Service-Call sowohl von Customer als auch Admin kommen kann: **ActorTyp
 
 | Commit | Datum | Was |
 |---|---|---|
+| `a4b3d51` | 2026-06-17 | Live-Counter Widerrufsfrist + Fokus-Kosmetik (6 Tests) |
 | `1537815` | 2026-06-17 | Wertersatz-UI § 357 Abs. 7 BGB (6 Tests) |
 | `811a658` | 2026-06-17 | TypeScript-Suite sauber (23 → 0 Fehler, 13 Dateien) |
 | `20082b9` | 2026-06-17 | Stripe-Refund Auto-Trigger im Widerruf-Flow (5 Tests) |
