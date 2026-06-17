@@ -2,6 +2,8 @@
 
 > Premium E-Commerce für orientalische Teppiche. Next.js 14 App Router + Prisma + PostgreSQL + Stripe + Resend + argon2-Admin-Auth.
 
+> 🔴 **VOR ALLEM ANDEREN:** Lies `STATUS.md` im Repo-Root. Dort steht der aktuelle Live-Stand, was funktioniert, was fehlt, und wo wir weitermachen müssen. Pflege diese Datei nach jeder größeren Änderung.
+
 ---
 
 ## 🔴 TEST-PFLICHT (harte Regel)
