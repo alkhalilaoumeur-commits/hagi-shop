@@ -196,6 +196,9 @@ export interface CancellationNotificationProps {
   orderNumber: string;
   reason: string;
   refundCents?: number;
+  /** Wertersatz § 357 Abs. 7 BGB: einbehaltener Betrag für Gebrauchsspuren. */
+  valueCompensationCents?: number;
+  valueCompensationReason?: string;
 }
 
 export function CancellationNotificationEmail(props: CancellationNotificationProps) {
@@ -212,6 +215,14 @@ export function CancellationNotificationEmail(props: CancellationNotificationPro
           <Body1>
             Erstattung über <strong>{formatCents(props.refundCents)}</strong> wurde veranlasst — Sie sehen sie
             innerhalb von 5-10 Werktagen auf Ihrer ursprünglichen Zahlungsmethode.
+          </Body1>
+        ) : null}
+        {props.valueCompensationCents && props.valueCompensationCents > 0 ? (
+          <Body1>
+            Hinweis: Wir haben einen Wertersatz von{" "}
+            <strong>{formatCents(props.valueCompensationCents)}</strong> für über die Prüfung hinausgehende
+            Gebrauchsspuren einbehalten (§ 357 Abs. 7 BGB). Begründung: {props.valueCompensationReason}. Die oben
+            genannte Erstattung ist bereits um diesen Betrag reduziert.
           </Body1>
         ) : null}
       </Section>

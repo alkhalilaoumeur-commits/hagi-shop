@@ -271,13 +271,27 @@ export async function cancelOrder(
  */
 export async function refundWithdrawnOrder(
   orderId: string,
-  params: { refundCents: number },
+  params: {
+    refundCents: number;
+    /** Wertersatz § 357 Abs. 7 BGB: für Gebrauchsspuren einbehaltener Betrag (Default 0). */
+    valueCompensationCents?: number;
+    /** Pflicht-Begründung, sobald Wertersatz > 0 einbehalten wird (Rechtsnachweis). */
+    valueCompensationReason?: string;
+  },
   actor: ActorContext,
 ): Promise<{ skipped: boolean }> {
   if (actor.actorType !== "admin" && actor.actorType !== "system") {
     throw new Error("FORBIDDEN_ACTOR");
   }
   if (params.refundCents <= 0) throw new Error("REFUND_AMOUNT_INVALID");
+
+  const valueCompensationCents = params.valueCompensationCents ?? 0;
+  const valueCompensationReason = params.valueCompensationReason?.trim() ?? "";
+  if (valueCompensationCents < 0) throw new Error("VALUE_COMPENSATION_INVALID");
+  // § 357 Abs. 7 BGB: Wertersatz ist nur mit Begründung zulässig (Beweislast Händler).
+  if (valueCompensationCents > 0 && valueCompensationReason.length === 0) {
+    throw new Error("VALUE_COMPENSATION_REASON_REQUIRED");
+  }
 
   const order = await prisma.order.findUnique({
     where: { id: orderId },
@@ -302,6 +316,11 @@ export async function refundWithdrawnOrder(
   if (order.paymentStatus === "REFUNDED") return { skipped: true };
   if (params.refundCents > order.totalCents - order.refundedCents) {
     throw new Error("REFUND_EXCEEDS_PAID");
+  }
+  // Netto-Refund (an Kunde) + einbehaltener Wertersatz dürfen den noch offenen
+  // Betrag nicht überschreiten — sonst würde "mehr einbehalten als gezahlt".
+  if (params.refundCents + valueCompensationCents > order.totalCents - order.refundedCents) {
+    throw new Error("VALUE_COMPENSATION_EXCEEDS_TOTAL");
   }
 
   // KERN-GUARD: Wenn Order versandt war, muss Ware physisch zurück sein.
@@ -376,6 +395,8 @@ export async function refundWithdrawnOrder(
       orderId,
       amountCents: params.refundCents,
       reason: "withdrawal",
+      valueCompensationCents,
+      notes: valueCompensationCents > 0 ? valueCompensationReason : null,
       stripeRefundId,
     },
   });
@@ -390,7 +411,11 @@ export async function refundWithdrawnOrder(
     action: "order.withdrawal_refunded",
     entityType: "Order",
     entityId: orderId,
-    after: { refundCents: params.refundCents },
+    after: {
+      refundCents: params.refundCents,
+      valueCompensationCents,
+      valueCompensationReason: valueCompensationCents > 0 ? valueCompensationReason : null,
+    },
     ipAddress: actor.ipAddress,
     userAgent: actor.userAgent,
   });
@@ -401,6 +426,8 @@ export async function refundWithdrawnOrder(
       orderNumber: order.orderNumber,
       reason: "Ihr Widerruf wurde bearbeitet, das Geld ist auf dem Weg.",
       refundCents: params.refundCents,
+      valueCompensationCents: valueCompensationCents > 0 ? valueCompensationCents : undefined,
+      valueCompensationReason: valueCompensationCents > 0 ? valueCompensationReason : undefined,
     });
   } catch (err) {
     console.error("[lifecycle] withdrawal refund mail failed", err);

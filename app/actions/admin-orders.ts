@@ -124,10 +124,18 @@ export async function adminMarkReturnReceived(rawInput: unknown): Promise<Action
   }
 }
 
-const refundWithdrawalSchema = z.object({
-  orderId: z.string().min(1).max(128),
-  refundCents: z.number().int().positive().max(10_000_000),
-});
+const refundWithdrawalSchema = z
+  .object({
+    orderId: z.string().min(1).max(128),
+    refundCents: z.number().int().positive().max(10_000_000),
+    valueCompensationCents: z.number().int().min(0).max(10_000_000).optional(),
+    valueCompensationReason: z.string().trim().max(1000).optional(),
+  })
+  // § 357 Abs. 7 BGB: Wertersatz nur mit Begründung.
+  .refine(
+    (d) => !d.valueCompensationCents || d.valueCompensationCents <= 0 || (d.valueCompensationReason?.length ?? 0) > 0,
+    { message: "VALUE_COMPENSATION_REASON_REQUIRED", path: ["valueCompensationReason"] },
+  );
 
 export async function adminRefundWithdrawal(rawInput: unknown): Promise<ActionResult> {
   const parsed = refundWithdrawalSchema.safeParse(rawInput);
@@ -136,7 +144,11 @@ export async function adminRefundWithdrawal(rawInput: unknown): Promise<ActionRe
   try {
     await refundWithdrawnOrder(
       parsed.data.orderId,
-      { refundCents: parsed.data.refundCents },
+      {
+        refundCents: parsed.data.refundCents,
+        valueCompensationCents: parsed.data.valueCompensationCents,
+        valueCompensationReason: parsed.data.valueCompensationReason,
+      },
       { actorType: ctx.actorType, actorId: ctx.actorId, ipAddress: ctx.ipAddress, userAgent: ctx.userAgent },
     );
     revalidatePath(`/admin/bestellungen/${parsed.data.orderId}`);

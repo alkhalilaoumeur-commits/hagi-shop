@@ -506,9 +506,22 @@ function WithdrawalRefundForm({
   startTransition: (cb: () => void) => void;
   refresh: () => void;
 }) {
-  const [eurValue, setEurValue] = useState((maxRefundCents / 100).toFixed(2));
-  const cents = Math.round(parseFloat(eurValue.replace(",", ".") || "0") * 100);
-  const invalid = !cents || cents <= 0 || cents > maxRefundCents;
+  const parseEur = (s: string) => Math.round(parseFloat(s.replace(",", ".") || "0") * 100);
+
+  const [wertersatzOn, setWertersatzOn] = useState(false);
+  const [manualEur, setManualEur] = useState((maxRefundCents / 100).toFixed(2));
+  const [wertersatzEur, setWertersatzEur] = useState("0.00");
+  const [reason, setReason] = useState("");
+
+  const wertersatzCents = wertersatzOn ? Math.max(0, parseEur(wertersatzEur)) : 0;
+  // Netto-Erstattung an den Kunden: bei Wertersatz = Kaufpreis − Abzug, sonst frei wählbar.
+  const refundCents = wertersatzOn ? Math.max(0, maxRefundCents - wertersatzCents) : parseEur(manualEur);
+
+  const reasonMissing = wertersatzOn && reason.trim().length === 0;
+  const invalid =
+    refundCents <= 0 ||
+    refundCents > maxRefundCents ||
+    (wertersatzOn && (wertersatzCents <= 0 || refundCents + wertersatzCents > maxRefundCents || reasonMissing));
 
   return (
     <form
@@ -516,30 +529,105 @@ function WithdrawalRefundForm({
         e.preventDefault();
         if (invalid) return;
         startTransition(async () => {
-          const result = await adminRefundWithdrawal({ orderId, refundCents: cents });
+          const result = await adminRefundWithdrawal({
+            orderId,
+            refundCents,
+            valueCompensationCents: wertersatzOn ? wertersatzCents : undefined,
+            valueCompensationReason: wertersatzOn ? reason.trim() : undefined,
+          });
           if (result.ok) refresh();
           else onError(result.error);
         });
       }}
       className="space-y-4"
     >
-      <div>
-        <label className="block text-[11px] uppercase tracking-[0.15em] mb-1.5" style={{ color: "#5A4A3A" }}>
-          Erstattungsbetrag (max {(maxRefundCents / 100).toFixed(2)} €)
-        </label>
+      {!wertersatzOn && (
+        <div>
+          <label className="block text-[11px] uppercase tracking-[0.15em] mb-1.5" style={{ color: "#5A4A3A" }}>
+            Erstattungsbetrag (max {(maxRefundCents / 100).toFixed(2)} €)
+          </label>
+          <input
+            type="text"
+            value={manualEur}
+            onChange={(e) => setManualEur(e.target.value)}
+            inputMode="decimal"
+            className="w-full px-3 py-2 font-mono text-sm"
+            style={{ background: "#FFFFFF", border: "1px solid #D9CDB8" }}
+          />
+        </div>
+      )}
+
+      {/* Wertersatz-Toggle § 357 Abs. 7 BGB */}
+      <label className="flex items-start gap-2.5 cursor-pointer">
         <input
-          type="text"
-          value={eurValue}
-          onChange={(e) => setEurValue(e.target.value)}
-          inputMode="decimal"
-          className="w-full px-3 py-2 font-mono text-sm"
-          style={{ background: "#FFFFFF", border: "1px solid #D9CDB8" }}
+          type="checkbox"
+          checked={wertersatzOn}
+          onChange={(e) => setWertersatzOn(e.target.checked)}
+          className="mt-0.5"
         />
-      </div>
+        <span className="text-[11px] leading-snug" style={{ color: "#5A4A3A" }}>
+          <strong style={{ color: "#0F0A06" }}>Wertersatz für Gebrauchsspuren abziehen</strong> (§ 357 Abs. 7 BGB) —
+          nur bei Wertminderung durch Nutzung über die bloße Prüfung hinaus.
+        </span>
+      </label>
+
+      {wertersatzOn && (
+        <div className="space-y-4 pl-1.5 border-l-2" style={{ borderColor: "#D9CDB8" }}>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.15em] mb-1.5" style={{ color: "#5A4A3A" }}>
+              Wertersatz-Betrag (€)
+            </label>
+            <input
+              type="text"
+              value={wertersatzEur}
+              onChange={(e) => setWertersatzEur(e.target.value)}
+              inputMode="decimal"
+              className="w-full px-3 py-2 font-mono text-sm"
+              style={{ background: "#FFFFFF", border: "1px solid #D9CDB8" }}
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] uppercase tracking-[0.15em] mb-1.5" style={{ color: "#5A4A3A" }}>
+              Begründung (Pflicht) <span style={{ color: "#A33B2A" }}>*</span>
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              placeholder="z.B. Teppich mit deutlichen Laufspuren und Fleck, nicht mehr als Neuware verkäuflich."
+              maxLength={1000}
+              className="w-full px-3 py-2 text-sm"
+              style={{
+                background: "#FFFFFF",
+                border: `1px solid ${reasonMissing ? "#A33B2A" : "#D9CDB8"}`,
+              }}
+            />
+            <p className="text-[11px] mt-1" style={{ color: "#5A4A3A" }}>
+              Wird dem Kunden in der Storno-Mail mitgeteilt und revisionssicher protokolliert.
+            </p>
+          </div>
+
+          {/* Live-Aufschlüsselung */}
+          <div className="text-[12px] font-mono space-y-0.5 p-3" style={{ background: "#F4EFE6", color: "#0F0A06" }}>
+            <div className="flex justify-between">
+              <span>Kaufpreis</span>
+              <span>{(maxRefundCents / 100).toFixed(2)} €</span>
+            </div>
+            <div className="flex justify-between" style={{ color: "#A33B2A" }}>
+              <span>− Wertersatz</span>
+              <span>−{(wertersatzCents / 100).toFixed(2)} €</span>
+            </div>
+            <div className="flex justify-between font-bold pt-1 mt-1 border-t" style={{ borderColor: "#D9CDB8" }}>
+              <span>= Erstattung an Kunde</span>
+              <span>{(refundCents / 100).toFixed(2)} €</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <p className="text-[11px]" style={{ color: "#5A4A3A" }}>
-        Voll-Widerruf: Kaufpreis inkl. Hin-Versand zurück (§ 357 Abs. 2 BGB).
-        Den eigentlichen Stripe-Refund musst du im Stripe-Dashboard auslösen — diese Aktion
-        setzt nur den Order-State + Mail an Kunden.
+        Voll-Widerruf: Kaufpreis inkl. Hin-Versand zurück (§ 357 Abs. 2 BGB). Der Stripe-Refund wird automatisch
+        ausgelöst — diese Aktion erstattet das Geld real und schickt dem Kunden die Storno-Mail.
       </p>
       <div className="flex gap-3">
         <button
@@ -549,7 +637,7 @@ function WithdrawalRefundForm({
           style={{ background: "#0F0A06", color: "#FAFAF7" }}
         >
           {isPending && <Loader2 className="w-3 h-3 animate-spin" />}
-          Refund eintragen
+          {refundCents > 0 ? `${(refundCents / 100).toFixed(2)} € erstatten` : "Refund eintragen"}
         </button>
         <button
           type="button"

@@ -28,7 +28,7 @@ für die Refund-Frist-Überwachung.
 | **Rücksendekosten zahlt Käufer** | § 357 Abs. 6 BGB | 🟢 | Im Customer-UI explizit benannt + Belehrung |
 | **Hin-Versand muss erstattet werden** | § 357 Abs. 2 S. 2 BGB | 🟢 | `calcWithdrawalRefund` inkludiert `shippingCents` bei Voll-Widerruf |
 | **Verweigerungsrecht bis Ware zurück** | § 357 Abs. 4 BGB | 🟢 | `refundWithdrawnOrder` wirft `RETURN_NOT_RECEIVED` |
-| **Wertersatz nur bei nicht-bestimmungsgemäßer Nutzung** | § 357 Abs. 7 BGB | 🟡 manuell | Admin entscheidet via Teil-Refund |
+| **Wertersatz nur bei nicht-bestimmungsgemäßer Nutzung** | § 357 Abs. 7 BGB | 🟢 umgesetzt | Wertersatz-UI mit Pflicht-Begründung, dokumentiert auf Refund-Record + Kunden-Mail |
 | **Widerrufsbeleg-Vorlage als Download** | EGBGB Art. 246a Anlage 2 | 🟢 | `/widerrufsformular?dl=1` PDF, verlinkt auf `/widerruf` |
 
 🟢 = umgesetzt + getestet · 🟡 = teilweise / offen
@@ -125,11 +125,16 @@ Aktuell nur Online-Formular. Pflicht ist Belehrung + Online-Formular oder Downlo
 **Empfehlung:** Static-PDF mit dem Muster-Widerrufsformular nach EGBGB Anlage 2 unter
 `public/widerrufsformular.pdf` ablegen + auf `/widerruf` verlinken. 5-Minuten-Task.
 
-### 3. Wertersatz-Berechnung bei Gebrauchsspuren
+### 3. Wertersatz-Berechnung bei Gebrauchsspuren — 🟢 UMGESETZT
 § 357 Abs. 7 BGB erlaubt Abzug vom Refund wenn der Käufer den Teppich nicht nur prüft
-sondern in Benutzung hatte. Aktuell: Admin gibt Teil-Refund manuell ein.
-**Empfehlung:** Beratungsfeld im Admin-UI mit Hinweis "20-100% bei Gebrauchsspuren —
-bitte begründen". Nicht test-pflichtig weil Einzelfall-Entscheidung.
+sondern in Benutzung hatte.
+**Umsetzung:** Im Refund-Form (`WithdrawalRefundForm`) gibt es einen Wertersatz-Toggle.
+Bei Aktivierung: Wertersatz-Betrag + Pflicht-Begründung, Live-Aufschlüsselung
+"Kaufpreis − Wertersatz = Erstattung". Backend (`refundWithdrawnOrder`) erzwingt die
+Begründung (`VALUE_COMPENSATION_REASON_REQUIRED`), erstattet via Stripe nur den Netto-
+Betrag, dokumentiert `valueCompensationCents` + Begründung auf dem Refund-Record und im
+Audit-Log, und teilt den Abzug dem Kunden transparent in der Storno-Mail mit.
+Abgesichert durch 6 Tests in `tests/withdrawal-wertersatz.test.ts`.
 
 ## Test-Abdeckung
 

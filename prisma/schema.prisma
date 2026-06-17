@@ -470,6 +470,9 @@ model Refund {
   amountCents    Int
   reason         String?
   notes          String?
+  // Wertersatz nach § 357 Abs. 7 BGB: einbehaltener Betrag für Gebrauchsspuren.
+  // 0 = voller Refund. > 0 verlangt eine Begründung (in notes dokumentiert).
+  valueCompensationCents Int @default(0)
   stripeRefundId String?  @unique
   refundedAt     DateTime @default(now())
 

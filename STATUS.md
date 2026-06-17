@@ -4,9 +4,9 @@
 > Bei jeder größeren Änderung pflegen.
 
 **Letztes Update:** 2026-06-17
-**Letzter Commit:** `811a658` — fix(types): TypeScript-Suite sauber (23 → 0 Fehler)
-**Branch:** `main` (lokal — noch nicht gepusht, 2 Commits ahead)
-**Test-Status:** 🟢 **110/110 grün** in 9 Suites · `tsc --noEmit` 🟢 **0 Fehler**
+**Letzter Commit:** `1537815` — feat(widerruf): Wertersatz-UI nach § 357 Abs. 7 BGB
+**Branch:** `main`
+**Test-Status:** 🟢 **116/116 grün** in 10 Suites · `tsc --noEmit` 🟢 **0 Fehler**
 
 ---
 
@@ -21,6 +21,7 @@
 | Admin-Backend (Auth + Dashboard + Order-Mgmt + CSV) | 🟢 fertig |
 | Widerruf End-to-End (Customer-UI + Admin-Gates + PDF + Refund-Reminder) | 🟢 fertig |
 | Stripe-Refund Auto-Trigger (Admin-Klick erstattet real via Stripe-API) | 🟢 fertig |
+| Wertersatz-UI bei Widerruf (§ 357 Abs. 7 BGB, Pflicht-Begründung + Kunden-Mail) | 🟢 fertig |
 | Env-Hardening + zentraler Config-Reader | 🟢 fertig |
 | **Code Live-Gang-Ready** | **🟢 ja** |
 | Coolify-Env + Cron-Setup (manuell) | 🔴 offen |
@@ -71,7 +72,7 @@
 
 ---
 
-## Test-Verteilung (110 Tests in 9 Suites)
+## Test-Verteilung (116 Tests in 10 Suites)
 
 | Suite | Tests | Was es abdeckt |
 |---|---|---|
@@ -84,6 +85,7 @@
 | `withdrawal-form-pdf.test.ts` | 5 | PDF-Header, Cache-Control, Download-Flag |
 | `refund-reminder.test.ts` | 14 | Stage-Klassifikation + Cron-Endpoint |
 | `withdrawal-refund-stripe.test.ts` | 5 | Auto-Refund via Stripe-API, Fehler-Rollback, Idempotenz, DB-only-Pfad, Partial |
+| `withdrawal-wertersatz.test.ts` | 6 | Wertersatz § 357 Abs. 7: Netto-Refund, Pflicht-Begründung, Konsistenz-Guard, negativ |
 
 Plus 9 Smoke-Skripte in `scripts/test-stage-*.ts` (Pre-Vitest-Stand, laufen noch).
 
@@ -124,7 +126,7 @@ npm run test:coverage # Coverage-Report
 | Priorität | Task | Aufwand |
 |---|---|---|
 | ✅ erledigt | ~~**Stripe-Refund auto-trigger** im `refundWithdrawnOrder`~~ — löst Refund jetzt real via Stripe-API aus, mit Idempotency-Key + Refund-Record + Fehler-Rollback (5 Tests) | — |
-| Mittel | Wertersatz-UI bei Widerruf (§ 357 Abs. 7 BGB) mit Begründungs-Feld | 2h |
+| ✅ erledigt | ~~Wertersatz-UI bei Widerruf (§ 357 Abs. 7 BGB) mit Begründungs-Feld~~ — Toggle + Pflicht-Begründung + Live-Aufschlüsselung + Kunden-Mail + 6 Tests | — |
 | Niedrig | Live-Counter "noch X Tage bis Frist-Ende" auf Order-Status-Page | 1h |
 
 **Admin-Verbesserungen:**
@@ -284,7 +286,7 @@ Wenn ein Service-Call sowohl von Customer als auch Admin kommen kann: **ActorTyp
 
 **Monat 2** — Optimierung:
 7. Kunden-Account-Flow (große Sache, 4-6h)
-8. Wertersatz-UI + Live-Counter
+8. ~~Wertersatz-UI~~ ✅ + Live-Counter "noch X Tage bis Frist-Ende" (offen, 1h)
 9. Programmatic-SEO (CityPages aus SEO-Skill)
 
 **Wenn Cash da:**
@@ -297,6 +299,7 @@ Wenn ein Service-Call sowohl von Customer als auch Admin kommen kann: **ActorTyp
 
 | Commit | Datum | Was |
 |---|---|---|
+| `1537815` | 2026-06-17 | Wertersatz-UI § 357 Abs. 7 BGB (6 Tests) |
 | `811a658` | 2026-06-17 | TypeScript-Suite sauber (23 → 0 Fehler, 13 Dateien) |
 | `20082b9` | 2026-06-17 | Stripe-Refund Auto-Trigger im Widerruf-Flow (5 Tests) |
 | `b2c8140` | 2026-06-17 | Widerrufsformular-PDF (EGBGB Anlage 2) |
