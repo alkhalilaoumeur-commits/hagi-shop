@@ -38,7 +38,7 @@ export type WithdrawalRejectReason =
 export interface OrderForWithdrawal {
   orderStatus: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
   paymentStatus: "PENDING" | "AUTHORIZED" | "PAID" | "PARTIALLY_REFUNDED" | "REFUNDED" | "FAILED" | "EXPIRED";
-  fulfillmentStatus: "UNFULFILLED" | "FULFILLED";
+  fulfillmentStatus: "UNFULFILLED" | "PARTIALLY_FULFILLED" | "FULFILLED" | "RETURNED";
   paidAt: Date | null;
   deliveredAt: Date | null;
   cancelledAt?: Date | null;

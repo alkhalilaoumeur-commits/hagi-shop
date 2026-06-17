@@ -10,7 +10,7 @@ describe("Payment — Webhook-Dedup race-safe", () => {
       provider: "stripe",
       providerEventId: eventId,
       eventType: "checkout.session.completed",
-      payload: { id: eventId } as Record<string, unknown>,
+      payload: { id: eventId },
       signature: "sig_xyz",
     });
     expect(r.alreadyProcessed).toBe(false);
@@ -23,7 +23,7 @@ describe("Payment — Webhook-Dedup race-safe", () => {
       provider: "stripe",
       providerEventId: eventId,
       eventType: "checkout.session.completed",
-      payload: { id: eventId } as Record<string, unknown>,
+      payload: { id: eventId },
     });
     await markProcessed(r1.recordId);
 
@@ -31,7 +31,7 @@ describe("Payment — Webhook-Dedup race-safe", () => {
       provider: "stripe",
       providerEventId: eventId,
       eventType: "checkout.session.completed",
-      payload: { id: eventId } as Record<string, unknown>,
+      payload: { id: eventId },
     });
     expect(r2.recordId).toBe(r1.recordId);
     expect(r2.alreadyProcessed).toBe(true);
@@ -46,7 +46,7 @@ describe("Payment — Webhook-Dedup race-safe", () => {
           provider: "stripe",
           providerEventId: eventId,
           eventType: "checkout.session.completed",
-          payload: { id: eventId } as Record<string, unknown>,
+          payload: { id: eventId },
         }),
       ),
     );

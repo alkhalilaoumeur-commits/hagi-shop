@@ -27,7 +27,7 @@ import prisma from "../lib/prisma";
 let pass = 0;
 let fail = 0;
 
-function check(name: string, ok: boolean, detail?: string) {
+function check(name: string, ok: boolean | undefined, detail?: string) {
   if (ok) {
     console.log(`✓ ${name}`);
     pass++;

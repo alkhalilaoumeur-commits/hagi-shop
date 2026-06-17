@@ -5,6 +5,7 @@ import { sendOrderConfirmation } from "@/lib/email/send";
 import { recordReceive, markProcessed, markError } from "@/lib/services/webhook-dedup";
 import { releaseDiscount } from "@/lib/services/discount";
 import { logAudit } from "@/lib/services/audit";
+import type { Prisma } from "@prisma/client";
 import type Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
       provider: "stripe",
       providerEventId: event.id,
       eventType: event.type,
-      payload: event as unknown as Record<string, unknown>,
+      payload: event as unknown as Prisma.InputJsonValue,
       signature: sig,
     });
 

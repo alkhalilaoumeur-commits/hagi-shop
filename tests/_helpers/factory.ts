@@ -34,7 +34,7 @@ export async function ensureProduct(): Promise<{ categoryId: string; productId: 
 
 interface OrderFactoryOpts {
   orderStatus?: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
-  paymentStatus?: "PENDING" | "AUTHORIZED" | "PAID" | "REFUNDED" | "FAILED" | "EXPIRED";
+  paymentStatus?: "PENDING" | "AUTHORIZED" | "PAID" | "PARTIALLY_REFUNDED" | "REFUNDED" | "FAILED" | "EXPIRED";
   fulfillmentStatus?: "UNFULFILLED" | "FULFILLED";
   totalCents?: number;
   customerEmail?: string;

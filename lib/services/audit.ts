@@ -10,7 +10,7 @@ export type ActorType = "customer" | "admin" | "system" | "webhook";
 
 export interface AuditEvent {
   actorType: ActorType;
-  actorId?: string;
+  actorId?: string | null;
   action: string;
   entityType: string;
   entityId: string;

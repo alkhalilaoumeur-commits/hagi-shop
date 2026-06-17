@@ -10,9 +10,9 @@ export default defineConfig({
     testTimeout: 20000,
     hookTimeout: 20000,
     pool: "forks",
-    poolOptions: {
-      forks: { singleFork: true },
-    },
+    // Vitest 4: poolOptions.forks.singleFork wurde entfernt. fileParallelism:false
+    // serialisiert die Test-Dateien -> kein paralleler Zugriff auf die geteilte Test-DB.
+    fileParallelism: false,
     reporters: ["default"],
     coverage: {
       provider: "v8",

@@ -11,7 +11,7 @@ import {
 
 interface ActorContext {
   actorType: ActorType;
-  actorId?: string;
+  actorId?: string | null;
   ipAddress?: string | null;
   userAgent?: string | null;
 }

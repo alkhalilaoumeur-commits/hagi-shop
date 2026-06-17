@@ -102,12 +102,16 @@ function orderToInvoiceData(order: {
 
 export async function generateInvoicePDF(order: Parameters<typeof orderToInvoiceData>[0]): Promise<Buffer> {
   const data = orderToInvoiceData(order);
-  return renderToBuffer(React.createElement(InvoicePDF, { data }));
+  return renderToBuffer(
+    React.createElement(InvoicePDF, { data }) as Parameters<typeof renderToBuffer>[0],
+  );
 }
 
 export async function generateDeliveryNotePDF(order: Parameters<typeof orderToInvoiceData>[0]): Promise<Buffer> {
   const data = orderToInvoiceData(order);
-  return renderToBuffer(React.createElement(DeliveryNotePDF, { data }));
+  return renderToBuffer(
+    React.createElement(DeliveryNotePDF, { data }) as Parameters<typeof renderToBuffer>[0],
+  );
 }
 
 export async function generateWithdrawalFormPDF(): Promise<Buffer> {
@@ -119,5 +123,7 @@ export async function generateWithdrawalFormPDF(): Promise<Buffer> {
     email: process.env.COMPANY_EMAIL ?? "info@hagi-shop.de",
     phone: process.env.COMPANY_PHONE ?? "+49 711 12 34 56 78",
   };
-  return renderToBuffer(React.createElement(WithdrawalFormPDF, { company }));
+  return renderToBuffer(
+    React.createElement(WithdrawalFormPDF, { company }) as Parameters<typeof renderToBuffer>[0],
+  );
 }

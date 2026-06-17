@@ -4,9 +4,9 @@
 > Bei jeder größeren Änderung pflegen.
 
 **Letztes Update:** 2026-06-17
-**Letzter Commit:** `20082b9` — feat(refund): Stripe-Refund Auto-Trigger im Widerruf-Flow
-**Branch:** `main` (lokal — noch nicht gepusht)
-**Test-Status:** 🟢 **110/110 grün** in 9 Suites
+**Letzter Commit:** `811a658` — fix(types): TypeScript-Suite sauber (23 → 0 Fehler)
+**Branch:** `main` (lokal — noch nicht gepusht, 2 Commits ahead)
+**Test-Status:** 🟢 **110/110 grün** in 9 Suites · `tsc --noEmit` 🟢 **0 Fehler**
 
 ---
 
@@ -297,6 +297,7 @@ Wenn ein Service-Call sowohl von Customer als auch Admin kommen kann: **ActorTyp
 
 | Commit | Datum | Was |
 |---|---|---|
+| `811a658` | 2026-06-17 | TypeScript-Suite sauber (23 → 0 Fehler, 13 Dateien) |
 | `20082b9` | 2026-06-17 | Stripe-Refund Auto-Trigger im Widerruf-Flow (5 Tests) |
 | `b2c8140` | 2026-06-17 | Widerrufsformular-PDF (EGBGB Anlage 2) |
 | `1b3ea85` | 2026-06-17 | Refund-Reminder § 357 BGB |

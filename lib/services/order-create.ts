@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import prisma from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { validateCart, totalWeightGrams } from "./cart";
 import { quoteShipping } from "./shipping";
 import { redeemDiscount, releaseDiscount } from "./discount";
@@ -131,10 +131,10 @@ export async function createDraftOrderAndStripeSession(
       const taxLine = taxFromGross(effectiveSubtotal, effectiveTaxRate);
       const totalCents = Math.max(0, effectiveSubtotal + shippingCents);
 
-      const consentRows = [
-        { type: "TERMS" as const, version: CONSENT_VERSIONS.TERMS },
-        { type: "PRIVACY" as const, version: CONSENT_VERSIONS.PRIVACY },
-        { type: "WITHDRAWAL" as const, version: CONSENT_VERSIONS.WITHDRAWAL },
+      const consentRows: { type: Prisma.ConsentLogCreateManyInput["consentType"]; version: string }[] = [
+        { type: "TERMS", version: CONSENT_VERSIONS.TERMS },
+        { type: "PRIVACY", version: CONSENT_VERSIONS.PRIVACY },
+        { type: "WITHDRAWAL", version: CONSENT_VERSIONS.WITHDRAWAL },
       ];
       if (input.newsletterConsent) {
         consentRows.push({ type: "NEWSLETTER" as const, version: CONSENT_VERSIONS.NEWSLETTER });
@@ -245,7 +245,8 @@ export async function createDraftOrderAndStripeSession(
     });
   } catch (err) {
     if (discountRedeemed) {
-      await releaseDiscount(discountRedeemed.code);
+      const code = (discountRedeemed as { code: string }).code;
+      await releaseDiscount(code);
     }
     throw err;
   }
