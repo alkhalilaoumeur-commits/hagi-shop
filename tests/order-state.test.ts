@@ -103,7 +103,7 @@ describe("Order-State — Invalid Transitions", () => {
     await cleanupOrder(order.id);
   });
 
-  it.fails("Deliver ohne vorheriges Ship: bleibt UNFULFILLED ODER wirft [BUG: markOrderDelivered hat keinen Status-Guard]", async () => {
+  it("Deliver ohne vorheriges Ship: wirft ORDER_NOT_SHIPPED oder bleibt UNFULFILLED", async () => {
     const { order } = await makeOrder({
       orderStatus: "CONFIRMED",
       paymentStatus: "PAID",

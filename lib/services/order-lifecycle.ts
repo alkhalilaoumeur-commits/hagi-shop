@@ -143,6 +143,9 @@ export async function markOrderDelivered(
       id: orderId,
       orderStatus: { not: "CANCELLED" },
       deliveredAt: null,
+      // Pflicht: nur FULFILLED-Orders dürfen auf COMPLETED. Sonst State-Drift
+      // (Order zeigt COMPLETED ohne dass je ein Fulfillment in der DB war).
+      fulfillmentStatus: "FULFILLED",
     },
     data: {
       orderStatus: "COMPLETED",
@@ -153,10 +156,11 @@ export async function markOrderDelivered(
   if (updated.count === 0) {
     const exists = await prisma.order.findUnique({
       where: { id: orderId },
-      select: { id: true, orderStatus: true, deliveredAt: true },
+      select: { id: true, orderStatus: true, deliveredAt: true, fulfillmentStatus: true },
     });
     if (!exists) throw new Error("ORDER_NOT_FOUND");
     if (exists.orderStatus === "CANCELLED") throw new Error("ORDER_CANCELLED");
+    if (exists.fulfillmentStatus !== "FULFILLED") throw new Error("ORDER_NOT_SHIPPED");
     return { skipped: true };
   }
 

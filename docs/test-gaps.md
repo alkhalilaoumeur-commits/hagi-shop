@@ -52,7 +52,7 @@ Wird bei jeder Lücken-Schließung gepflegt.
 - 🟢 Concurrent Ship → nur ein Fulfillment
 - 🟢 Audit-Log für Lifecycle-Übergänge
 - 🟡 Invalid Transitions (Ship einer PENDING-Order) — Smoke-Test vorhanden, aber Service hat noch keinen expliziten Throw
-- 🔴 **BUG ENTDECKT 2026-06-16:** `markOrderDelivered` ohne vorheriges Ship setzt Order trotzdem auf COMPLETED + fulfillmentStatus=FULFILLED, obwohl kein Fulfillment existiert. State-Drift möglich. Fix: WHERE-Guard in `updateMany` muss `fulfillmentStatus: "FULFILLED"` voraussetzen.
+- 🟢 **BUG GEFIXT 2026-06-17:** `markOrderDelivered` hat jetzt `fulfillmentStatus: "FULFILLED"` als WHERE-Guard in `updateMany`. Wirft `ORDER_NOT_SHIPPED` wenn versucht wird eine nicht-versandte Order auf COMPLETED zu setzen. State-Drift verhindert.
 
 ### Rabatt
 
