@@ -29,7 +29,7 @@ für die Refund-Frist-Überwachung.
 | **Hin-Versand muss erstattet werden** | § 357 Abs. 2 S. 2 BGB | 🟢 | `calcWithdrawalRefund` inkludiert `shippingCents` bei Voll-Widerruf |
 | **Verweigerungsrecht bis Ware zurück** | § 357 Abs. 4 BGB | 🟢 | `refundWithdrawnOrder` wirft `RETURN_NOT_RECEIVED` |
 | **Wertersatz nur bei nicht-bestimmungsgemäßer Nutzung** | § 357 Abs. 7 BGB | 🟡 manuell | Admin entscheidet via Teil-Refund |
-| **Widerrufsbeleg-Vorlage als Download** | EGBGB Art. 246a Anlage 2 | 🟡 offen | sollte als PDF auf `/widerruf` verlinkt werden |
+| **Widerrufsbeleg-Vorlage als Download** | EGBGB Art. 246a Anlage 2 | 🟢 | `/widerrufsformular?dl=1` PDF, verlinkt auf `/widerruf` |
 
 🟢 = umgesetzt + getestet · 🟡 = teilweise / offen
 
@@ -150,7 +150,7 @@ Plus 46 Tests aus anderen Bereichen (Order-State, Discount, Payment, Auth) = **1
 
 - [ ] `CRON_SECRET` in Coolify setzen + täglicher Cron-Aufruf konfigurieren
 - [ ] `ADMIN_NOTIFY_EMAIL` in Coolify setzen (sonst Default `COMPANY_EMAIL`)
-- [ ] Muster-Widerrufsformular als PDF in `public/widerrufsformular.pdf`
+- [x] Muster-Widerrufsformular — dynamisches PDF via `/widerrufsformular`-Route (`?dl=1` für Download)
 - [ ] Erste echte Bestellung manuell durchgespielt: Widerruf → Return → Refund-Klick →
       Stripe-Dashboard-Refund
 - [ ] Externes Rechts-Review durch Anwalt (empfohlen vor erstem €1000+ Verkauf)

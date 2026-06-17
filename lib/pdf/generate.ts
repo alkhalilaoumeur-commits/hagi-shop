@@ -109,3 +109,15 @@ export async function generateDeliveryNotePDF(order: Parameters<typeof orderToIn
   const data = orderToInvoiceData(order);
   return renderToBuffer(React.createElement(DeliveryNotePDF, { data }));
 }
+
+export async function generateWithdrawalFormPDF(): Promise<Buffer> {
+  const { WithdrawalFormPDF } = await import("./withdrawal-form");
+  const company = {
+    name: process.env.COMPANY_NAME ?? "Hagi Teppiche",
+    street: process.env.COMPANY_STREET ?? "Egilolfstraße 41",
+    city: process.env.COMPANY_CITY ?? "70599 Stuttgart",
+    email: process.env.COMPANY_EMAIL ?? "info@hagi-shop.de",
+    phone: process.env.COMPANY_PHONE ?? "+49 711 12 34 56 78",
+  };
+  return renderToBuffer(React.createElement(WithdrawalFormPDF, { company }));
+}

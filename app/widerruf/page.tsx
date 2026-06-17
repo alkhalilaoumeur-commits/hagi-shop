@@ -51,13 +51,33 @@ export default function WiderrufPage() {
         <section>
           <h2 className="font-semibold text-ink mb-2 text-base">Muster-Widerrufsformular</h2>
           <div className="border border-border p-4 space-y-2 text-xs">
-            <p>An: [HAGIS NAME], [ADRESSE], E-Mail: kontakt@hagi-shop.de</p>
+            <p>An: Hagi Teppiche, Egilolfstraße 41, 70599 Stuttgart, E-Mail: info@hagi-shop.de</p>
             <p>Hiermit widerrufe ich den von mir abgeschlossenen Vertrag über den Kauf folgender Waren:</p>
             <p>— Bestellt am / erhalten am:</p>
             <p>— Name des Verbrauchers:</p>
             <p>— Anschrift des Verbrauchers:</p>
             <p>— Datum:</p>
           </div>
+          <div className="mt-4 flex flex-wrap gap-3 text-xs">
+            <a
+              href="/widerrufsformular?dl=1"
+              className="inline-block px-4 py-2 font-semibold uppercase tracking-[0.15em]"
+              style={{ background: "#0F0A06", color: "#FAFAF7" }}
+            >
+              Muster-PDF herunterladen
+            </a>
+            <a
+              href="/widerruf-antrag"
+              className="inline-block px-4 py-2 uppercase tracking-[0.15em]"
+              style={{ background: "transparent", border: "1px solid #0F0A06", color: "#0F0A06" }}
+            >
+              Online widerrufen →
+            </a>
+          </div>
+          <p className="mt-3 text-xs text-muted">
+            Die Verwendung des Formulars ist nicht zwingend. Sie können auch formlos per E-Mail
+            an info@hagi-shop.de oder über das Online-Formular widerrufen.
+          </p>
         </section>
       </div>
     </div>
