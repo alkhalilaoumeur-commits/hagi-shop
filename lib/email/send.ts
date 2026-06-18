@@ -61,6 +61,12 @@ async function safeSend(
     // PII-bewusstes Log: nur Domain, nicht Local-Part der Email
     const masked = to.replace(/^([^@]{1,3})[^@]*@/, "$1***@");
     console.log(`[email:mock] → ${masked} · "${subject}" · tag=${tag}`);
+    // Dev-Hilfe: Token-Links (Verify / Passwort-Reset) sichtbar machen, damit man
+    // den Flow ohne echten Mail-Versand manuell durchklicken kann.
+    const link =
+      text.match(/https?:\/\/\S*\/konto\/\S+/)?.[0] ??
+      html.match(/https?:\/\/[^"']*\/konto\/[^"']+/)?.[0];
+    if (link) console.log(`[email:mock]   link: ${link}`);
     return { mocked: true };
   }
   const resend = getResend();
