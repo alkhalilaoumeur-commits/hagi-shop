@@ -5,6 +5,7 @@ import { sendOrderConfirmation } from "@/lib/email/send";
 import { recordReceive, markProcessed, markError } from "@/lib/services/webhook-dedup";
 import { releaseDiscount } from "@/lib/services/discount";
 import { logAudit } from "@/lib/services/audit";
+import { logError } from "@/lib/services/error-log";
 import type { Prisma } from "@prisma/client";
 import type Stripe from "stripe";
 
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
     await markProcessed(recordId);
     return NextResponse.json({ received: true, ok: true });
   } catch (err) {
-    console.error("[webhook] handler failed", err);
+    await logError({ source: "api/stripe/webhook", error: err, context: { eventId: event.id, eventType: event.type } });
     if (recordId) {
       await markError(recordId, err instanceof Error ? err.message : String(err));
     }

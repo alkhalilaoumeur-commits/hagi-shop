@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { z } from "zod";
 import { slugify } from "@/lib/format";
 import { checkAdminRequest } from "@/lib/admin-auth";
+import { logError } from "@/lib/services/error-log";
 
 const UpdateSchema = z.object({
   name: z.string().min(2).max(200).optional(),
@@ -70,7 +71,7 @@ export async function PATCH(
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Ungültige Daten.", details: error.errors }, { status: 400 });
     }
-    console.error("[produkte] update failed", error);
+    await logError({ source: "api/produkte", error, context: { op: "update", id } });
     return NextResponse.json({ error: "Fehler beim Aktualisieren." }, { status: 500 });
   }
 }
@@ -89,7 +90,7 @@ export async function DELETE(
     await prisma.product.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("[produkte] delete failed", error);
+    await logError({ source: "api/produkte", error, context: { op: "delete", id } });
     return NextResponse.json({ error: "Fehler beim Löschen." }, { status: 500 });
   }
 }

@@ -6,7 +6,7 @@
 **Letztes Update:** 2026-06-18
 **Letzter Commit:** `f38d51b` — Merge Kunden-Konto v1 in `main`
 **Branch:** `main` (Kunden-Konto v1 gemergt)
-**Test-Status:** 🟢 **155/155 grün** in 14 Suites · `tsc --noEmit` 🟢 **0 Fehler**
+**Test-Status:** 🟢 **159/159 grün** in 15 Suites · `tsc --noEmit` 🟢 **0 Fehler**
 
 ---
 
@@ -101,6 +101,7 @@
 | `customer-auth.test.ts` | 21 | Register (Double-Opt-In, Enumeration-Schutz), Verify + Backfill, Login + Lock + EMAIL_NOT_VERIFIED, Password-Reset + Session-Revoke, Session-Expiry/Revoke |
 | `customer-address.test.ts` | 8 | Adress-CRUD, IDOR-Schutz (FORBIDDEN), NOT_FOUND, Default-Atomarität |
 | `order-customer-link.test.ts` | 4 | Konto-Verknüpfung beim Checkout (verified-Match, unverified-Block, explicit-Vorrang) |
+| `error-log.test.ts` | 4 | Zentrales Fehler-Logging: DB-Persistenz, String-Fallback, wirft-nie, Cleanup |
 
 Plus 9 Smoke-Skripte in `scripts/test-stage-*.ts` (Pre-Vitest-Stand, laufen noch).
 

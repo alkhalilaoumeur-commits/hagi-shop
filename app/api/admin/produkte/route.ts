@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { z } from "zod";
 import { slugify } from "@/lib/format";
 import { checkAdminRequest } from "@/lib/admin-auth";
+import { logError } from "@/lib/services/error-log";
 
 const ProductSchema = z.object({
   name: z.string().min(2).max(200),
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Ungültige Daten.", details: error.errors }, { status: 400 });
     }
-    console.error("[produkte] create failed", error);
+    await logError({ source: "api/produkte", error, context: { op: "create" } });
     return NextResponse.json({ error: "Fehler beim Anlegen." }, { status: 500 });
   }
 }

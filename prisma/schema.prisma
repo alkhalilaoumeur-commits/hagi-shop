@@ -629,6 +629,18 @@ model AuditLog {
   @@index([action, entityType, entityId, createdAt])
 }
 
+model ErrorLog {
+  id        String   @id @default(cuid())
+  source    String // z.B. "api/produkte", "api/stripe/webhook"
+  message   String
+  stack     String?
+  context   Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([source])
+}
+
 model ConsentLog {
   id         String  @id @default(cuid())
   customerId String?

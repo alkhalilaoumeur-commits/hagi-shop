@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { generateInvoicePDF, generateDeliveryNotePDF } from "@/lib/pdf/generate";
 import { rateLimit, extractIp } from "@/lib/services/rate-limit";
+import { logError } from "@/lib/services/error-log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -55,7 +56,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       },
     });
   } catch (err) {
-    console.error("[invoice] generate failed", err);
+    await logError({ source: "api/invoice", error: err });
     return NextResponse.json({ error: "generate_failed" }, { status: 500 });
   }
 }

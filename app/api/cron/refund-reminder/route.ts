@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { findOverdueWithdrawalRefunds, groupByStage, type ReminderStage } from "@/lib/services/refund-reminders";
 import { sendRefundReminderToAdmin } from "@/lib/email/send";
 import { logAudit } from "@/lib/services/audit";
+import { logError } from "@/lib/services/error-log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
       await sendRefundReminderToAdmin({ to: adminEmail, stage, refunds: groups[stage] });
       sent.push({ stage, count: groups[stage].length });
     } catch (err) {
-      console.error(`[cron] refund-reminder ${stage} mail failed:`, err);
+      await logError({ source: "api/cron/refund-reminder", error: err, context: { stage } });
     }
   }
 

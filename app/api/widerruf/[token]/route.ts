@@ -6,6 +6,7 @@ import { isWithdrawalEligible } from "@/lib/services/withdrawal";
 import { registerWithdrawal } from "@/lib/services/order-lifecycle";
 import { sendWithdrawalReceived } from "@/lib/email/send";
 import { logAudit } from "@/lib/services/audit";
+import { logError } from "@/lib/services/error-log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
         publicToken: token,
       });
     } catch (err) {
-      console.error("[withdrawal] mail failed", err);
+      await logError({ source: "api/widerruf", error: err, context: { op: "mail", orderNumber: order.orderNumber } });
     }
   }
 

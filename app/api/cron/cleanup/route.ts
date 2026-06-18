@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { cleanupRateLimitLogs } from "@/lib/services/rate-limit";
+import { cleanupErrorLogs } from "@/lib/services/error-log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,11 +25,12 @@ export async function GET(req: NextRequest) {
 
   const startedAt = Date.now();
   const removedRateLogs = await cleanupRateLimitLogs();
+  const removedErrorLogs = await cleanupErrorLogs();
   const duration = Date.now() - startedAt;
 
   return NextResponse.json({
     ok: true,
     duration_ms: duration,
-    removed: { rate_logs: removedRateLogs },
+    removed: { rate_logs: removedRateLogs, error_logs: removedErrorLogs },
   });
 }
