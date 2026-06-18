@@ -235,6 +235,7 @@ model Customer {
   orders      Order[]
   addresses   CustomerAddress[]
   consentLogs ConsentLog[]
+  sessions    CustomerSession[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -242,6 +243,22 @@ model Customer {
   @@index([email])
   @@index([deletedAt])
   @@index([lockedUntil])
+}
+
+model CustomerSession {
+  id         String    @id @default(cuid())
+  customerId String
+  tokenHash  String    @unique
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([expiresAt])
 }
 
 model CustomerAddress {

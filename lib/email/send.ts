@@ -6,11 +6,15 @@ import {
   DeliveryNotificationEmail,
   CancellationNotificationEmail,
   WithdrawalReceivedEmail,
+  EmailVerificationEmail,
+  PasswordResetEmail,
   type OrderConfirmationProps,
   type ShippingNotificationProps,
   type DeliveryNotificationProps,
   type CancellationNotificationProps,
   type WithdrawalReceivedProps,
+  type EmailVerificationProps,
+  type PasswordResetProps,
 } from "./templates";
 import { SHOP_NAME } from "./shared";
 
@@ -104,6 +108,20 @@ export async function sendWithdrawalReceived(to: string, props: WithdrawalReceiv
   const html = await render(WithdrawalReceivedEmail(props));
   const text = await render(WithdrawalReceivedEmail(props), { plainText: true });
   return safeSend(to, subject, html, text, "order.withdrawal");
+}
+
+export async function sendEmailVerification(to: string, props: EmailVerificationProps) {
+  const subject = "Bitte bestätigen Sie Ihre E-Mail-Adresse";
+  const html = await render(EmailVerificationEmail(props));
+  const text = await render(EmailVerificationEmail(props), { plainText: true });
+  return safeSend(to, subject, html, text, "account.verify");
+}
+
+export async function sendPasswordReset(to: string, props: PasswordResetProps) {
+  const subject = "Passwort zurücksetzen — Hagi Teppiche";
+  const html = await render(PasswordResetEmail(props));
+  const text = await render(PasswordResetEmail(props), { plainText: true });
+  return safeSend(to, subject, html, text, "account.password_reset");
 }
 
 /**

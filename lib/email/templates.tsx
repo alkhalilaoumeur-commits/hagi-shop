@@ -270,3 +270,56 @@ export function WithdrawalReceivedEmail(props: WithdrawalReceivedProps) {
     </EmailFrame>
   );
 }
+
+export interface EmailVerificationProps {
+  firstName: string | null;
+  verifyUrl: string;
+}
+
+export function EmailVerificationEmail(props: EmailVerificationProps) {
+  const greeting = props.firstName ? `Willkommen, ${props.firstName}.` : "Willkommen.";
+  return (
+    <EmailFrame preview="Bestätigen Sie Ihre E-Mail-Adresse">
+      <Section style={{ padding: "32px 40px 16px" }}>
+        <Eyebrow>Konto bestätigen</Eyebrow>
+        <Heading>{greeting}</Heading>
+        <Body1>
+          Schön, dass Sie ein Konto bei Hagi Teppiche anlegen. Bitte bestätigen Sie Ihre
+          E-Mail-Adresse mit einem Klick — danach können Sie sich anmelden und Ihre Bestellungen
+          einsehen.
+        </Body1>
+        <CTA href={props.verifyUrl} label="E-Mail bestätigen" />
+        <Body1>
+          Der Link ist 24 Stunden gültig. Falls Sie kein Konto angelegt haben, ignorieren Sie diese
+          E-Mail einfach — es passiert dann nichts.
+        </Body1>
+      </Section>
+    </EmailFrame>
+  );
+}
+
+export interface PasswordResetProps {
+  firstName: string | null;
+  resetUrl: string;
+}
+
+export function PasswordResetEmail(props: PasswordResetProps) {
+  const greeting = props.firstName ? `Hallo ${props.firstName},` : "Hallo,";
+  return (
+    <EmailFrame preview="Passwort zurücksetzen">
+      <Section style={{ padding: "32px 40px 16px" }}>
+        <Eyebrow>Passwort zurücksetzen</Eyebrow>
+        <Heading>{greeting}</Heading>
+        <Body1>
+          Sie haben angefragt, Ihr Passwort zurückzusetzen. Klicken Sie auf den Button, um ein neues
+          Passwort zu vergeben.
+        </Body1>
+        <CTA href={props.resetUrl} label="Neues Passwort vergeben" />
+        <Body1>
+          Der Link ist 1 Stunde gültig. Falls Sie das nicht waren, ignorieren Sie diese E-Mail — Ihr
+          Passwort bleibt dann unverändert.
+        </Body1>
+      </Section>
+    </EmailFrame>
+  );
+}
