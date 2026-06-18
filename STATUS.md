@@ -4,8 +4,8 @@
 > Bei jeder größeren Änderung pflegen.
 
 **Letztes Update:** 2026-06-18
-**Letzter Commit:** Adressbuch (CRUD + Default) — Kunden-Konto v1 komplett
-**Branch:** `feat/customer-login` (noch nicht in `main` gemergt)
+**Letzter Commit:** `f38d51b` — Merge Kunden-Konto v1 in `main`
+**Branch:** `main` (Kunden-Konto v1 gemergt)
 **Test-Status:** 🟢 **155/155 grün** in 14 Suites · `tsc --noEmit` 🟢 **0 Fehler**
 
 ---
