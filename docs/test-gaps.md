@@ -1,4 +1,4 @@
-# Test-Gap-Liste (Stand 2026-06-16)
+# Test-Gap-Liste (Stand 2026-06-18)
 
 Lebende Liste aller bekannten Test-Lücken + nicht implementierten Funktionen die per RED-Test gefordert sind.
 Wird bei jeder Lücken-Schließung gepflegt.
@@ -64,7 +64,7 @@ Wird bei jeder Lücken-Schließung gepflegt.
 - ⚪ maxDiscountCents-Capping bei %-Codes
 - ⚪ excludedProductIds / excludedCategoryIds
 
-### Auth
+### Auth (Admin)
 
 - 🟢 argon2id Hash + verify (aus Stage 4 Smoke)
 - 🟢 Account-Lock Schema
@@ -72,6 +72,19 @@ Wird bei jeder Lücken-Schließung gepflegt.
 - ⚪ E2E Login-Flow mit echtem Cookie-Round-Trip
 - ⚪ Session-Hijacking (gleicher Cookie aus anderer IP)
 - ⚪ Concurrent Login-Versuche
+
+### Kunden-Konto (`customer-auth.test.ts`, `customer-address.test.ts`, `order-customer-link.test.ts`)
+
+- 🟢 Register Happy + schwaches PW + ungültige E-Mail + Enumeration-Schutz (verified)
+- 🟢 verifyEmail Happy + Backfill Gast-Bestellungen + invalid/abgelaufener Token
+- 🟢 Login Happy + falsches PW (Fehlversuch-Zähler) + unbekannte E-Mail + EMAIL_NOT_VERIFIED + Lock nach 5
+- 🟢 Password-Reset Happy + Session-Revoke + abgelaufener/schwacher Reset
+- 🟢 Session-Lifecycle: getCurrentCustomer, Expiry, Revoke, Logout
+- 🟢 Adressbuch CRUD + IDOR (FORBIDDEN) + NOT_FOUND + Default-Atomarität
+- 🟢 Checkout-Verknüpfung: verified-Match / unverified-Block / explicit-Vorrang
+- ⚪ E2E Round-Trip Register→Verify→Login→Checkout→Historie (manuell via Mock-Mail getestet, kein automatisierter E2E)
+- ⚪ Verify-Token-Replay (2. Klick auf denselben Link) — aktuell INVALID_TOKEN, kein expliziter Test
+- ⚪ Action-Layer-Tests (next/headers-Mock) — Service-Layer ist getestet, Actions nur dünne Wrapper
 
 ## Nicht test-pflichtig
 

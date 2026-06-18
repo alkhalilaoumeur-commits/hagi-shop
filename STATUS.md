@@ -3,10 +3,10 @@
 > **Diese Datei ist die Quelle der Wahrheit.** Wer (Claude in zukünftiger Session, Co-Coder, du selbst nach 2 Wochen Pause) wissen will wo wir stehen und wo's weitergeht, liest hier.
 > Bei jeder größeren Änderung pflegen.
 
-**Letztes Update:** 2026-06-17
-**Letzter Commit:** `a4b3d51` — feat(widerruf): Live-Counter Widerrufsfrist + Fokus-Kosmetik
-**Branch:** `main`
-**Test-Status:** 🟢 **122/122 grün** in 11 Suites · `tsc --noEmit` 🟢 **0 Fehler**
+**Letztes Update:** 2026-06-18
+**Letzter Commit:** Adressbuch (CRUD + Default) — Kunden-Konto v1 komplett
+**Branch:** `feat/customer-login` (noch nicht in `main` gemergt)
+**Test-Status:** 🟢 **155/155 grün** in 14 Suites · `tsc --noEmit` 🟢 **0 Fehler**
 
 ---
 
@@ -19,6 +19,7 @@
 | Email-Templates (5 Stk.) + Mock-Mode | 🟢 fertig |
 | Tracking-Page + PDF (Invoice + DeliveryNote) | 🟢 fertig |
 | Admin-Backend (Auth + Dashboard + Order-Mgmt + CSV) | 🟢 fertig |
+| Kunden-Konto (Login/Register Double-Opt-In + Reset + Historie + Adressbuch) | 🟢 fertig |
 | Widerruf End-to-End (Customer-UI + Admin-Gates + PDF + Refund-Reminder) | 🟢 fertig |
 | Stripe-Refund Auto-Trigger (Admin-Klick erstattet real via Stripe-API) | 🟢 fertig |
 | Wertersatz-UI bei Widerruf (§ 357 Abs. 7 BGB, Pflicht-Begründung + Kunden-Mail) | 🟢 fertig |
@@ -61,6 +62,16 @@
 - CSV-Export DATEV-tauglich mit Excel-Formel-Injection-Schutz
 - Audit-Log-Viewer mit Filter + Pagination
 
+### Kunden-Konto (33 Tests)
+- Registrierung mit Double-Opt-In (E-Mail-Verifizierung Pflicht, 24h-Token)
+- Login mit Account-Lock (5/15min), Rate-Limit, Timing-Schutz, EMAIL_NOT_VERIFIED-Gate
+- Passwort-Reset per Mail (1h-Token), widerruft alle Sessions nach Reset
+- Bestell-Historie über `customerId` (Backfill bestehender Gast-Bestellungen bei Verify)
+- Adressbuch (CRUD + Standard-Adressen) mit IDOR-Ownership-Check
+- Pages: `/konto` (Dashboard) + login/registrieren/verifizieren/passwort-* + bestellungen/adressen/profil
+- Navbar User-Link, Middleware-Schutz für `/konto/*`
+- Sessions wie Admin: gehashter Cookie-Token (`hagi-customer-session`), DB-validiert, 30 Tage
+
 ### Widerruf (BGB-konform, 105 Tests)
 - Customer-UI: `/widerruf-antrag` (Lookup) + `/widerruf-antrag/[token]` (Form) + `/erfolg`
 - Server-Action mit Zod + Rate-Limit 3/h pro IP
@@ -72,7 +83,7 @@
 
 ---
 
-## Test-Verteilung (122 Tests in 11 Suites)
+## Test-Verteilung (155 Tests in 14 Suites)
 
 | Suite | Tests | Was es abdeckt |
 |---|---|---|
@@ -87,6 +98,9 @@
 | `withdrawal-refund-stripe.test.ts` | 5 | Auto-Refund via Stripe-API, Fehler-Rollback, Idempotenz, DB-only-Pfad, Partial |
 | `withdrawal-wertersatz.test.ts` | 6 | Wertersatz § 357 Abs. 7: Netto-Refund, Pflicht-Begründung, Konsistenz-Guard, negativ |
 | `withdrawal-countdown.test.ts` | 6 | Live-Counter Widerrufsfrist: Tage-Berechnung, Frist-Start, abgelaufen, verlängert |
+| `customer-auth.test.ts` | 21 | Register (Double-Opt-In, Enumeration-Schutz), Verify + Backfill, Login + Lock + EMAIL_NOT_VERIFIED, Password-Reset + Session-Revoke, Session-Expiry/Revoke |
+| `customer-address.test.ts` | 8 | Adress-CRUD, IDOR-Schutz (FORBIDDEN), NOT_FOUND, Default-Atomarität |
+| `order-customer-link.test.ts` | 4 | Konto-Verknüpfung beim Checkout (verified-Match, unverified-Block, explicit-Vorrang) |
 
 Plus 9 Smoke-Skripte in `scripts/test-stage-*.ts` (Pre-Vitest-Stand, laufen noch).
 
@@ -117,7 +131,7 @@ npm run test:coverage # Coverage-Report
 **Customer-Features die fehlen:**
 | Priorität | Task | Aufwand |
 |---|---|---|
-| Mittel | Kunden-Login (aktuell guest-only) — separater Customer-Flow mit eigenem `Customer.passwordHash` | 4-6h |
+| ✅ erledigt | ~~Kunden-Login (aktuell guest-only)~~ — Double-Opt-In-Register, Login, Passwort-Reset, Bestell-Historie, Adressbuch, Checkout-Verknüpfung (33 Tests) | — |
 | Niedrig | Wishlist/Merkliste | 2h |
 | Mittel | Showroom-Termin-Formular (statt Telefon/WhatsApp) | 2-3h |
 | Niedrig | Newsletter-Signup mit Double-Opt-In | 2h |
@@ -286,7 +300,7 @@ Wenn ein Service-Call sowohl von Customer als auch Admin kommen kann: **ActorTyp
 6. Anwalt-Termin buchen
 
 **Monat 2** — Optimierung:
-7. Kunden-Account-Flow (große Sache, 4-6h)
+7. ~~Kunden-Account-Flow~~ ✅ erledigt (Login/Register/Reset/Historie/Adressbuch, 33 Tests)
 8. ~~Wertersatz-UI~~ ✅ + ~~Live-Counter "noch X Tage bis Frist-Ende"~~ ✅
 9. Programmatic-SEO (CityPages aus SEO-Skill)
 
@@ -300,7 +314,8 @@ Wenn ein Service-Call sowohl von Customer als auch Admin kommen kann: **ActorTyp
 
 | Commit | Datum | Was |
 |---|---|---|
-| `a4b3d51` | 2026-06-17 | Live-Counter Widerrufsfrist + Fokus-Kosmetik (6 Tests) |
+| `feat/customer-login` | 2026-06-18 | Kunden-Konto v1: Auth-Service + CustomerSession, Pages, Checkout-Verknüpfung, Adressbuch (33 Tests, 4 Commits) |
+| `159e6d1` | 2026-06-17 | Live-Counter Widerrufsfrist + Fokus-Kosmetik (6 Tests) |
 | `1537815` | 2026-06-17 | Wertersatz-UI § 357 Abs. 7 BGB (6 Tests) |
 | `811a658` | 2026-06-17 | TypeScript-Suite sauber (23 → 0 Fehler, 13 Dateien) |
 | `20082b9` | 2026-06-17 | Stripe-Refund Auto-Trigger im Widerruf-Flow (5 Tests) |
