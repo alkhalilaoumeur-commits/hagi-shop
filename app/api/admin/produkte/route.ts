@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Ungültige Daten.", details: error.errors }, { status: 400 });
     }
+    console.error("[produkte] create failed", error);
     return NextResponse.json({ error: "Fehler beim Anlegen." }, { status: 500 });
   }
 }

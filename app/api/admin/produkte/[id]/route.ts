@@ -70,6 +70,7 @@ export async function PATCH(
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Ungültige Daten.", details: error.errors }, { status: 400 });
     }
+    console.error("[produkte] update failed", error);
     return NextResponse.json({ error: "Fehler beim Aktualisieren." }, { status: 500 });
   }
 }
@@ -84,7 +85,11 @@ export async function DELETE(
 
   const { id } = await params;
 
-  await prisma.product.delete({ where: { id } });
-
-  return NextResponse.json({ ok: true });
+  try {
+    await prisma.product.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("[produkte] delete failed", error);
+    return NextResponse.json({ error: "Fehler beim Löschen." }, { status: 500 });
+  }
 }
