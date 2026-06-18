@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { headers } from "next/headers";
 import { createDraftOrderAndStripeSession } from "@/lib/services/order-create";
+import { getCurrentCustomer } from "@/lib/services/customer-auth";
 
 const cartItemSchema = z.object({
   productId: z.string().min(1).max(128),
@@ -85,10 +86,14 @@ export async function createCheckoutSessionAction(
   const userAgent = h.get("user-agent")?.slice(0, 500) ?? null;
   const referrer = h.get("referer")?.slice(0, 500) ?? null;
 
+  // Eingeloggter Kunde? Dann Bestellung direkt dem Konto zuordnen.
+  const currentCustomer = await getCurrentCustomer();
+
   try {
     const result = await createDraftOrderAndStripeSession({
       items: input.items,
       email: input.email,
+      customerId: currentCustomer?.id ?? null,
       phone: input.phone ?? null,
       isBusinessCustomer: input.isBusinessCustomer,
       companyName: input.companyName ?? null,

@@ -6,11 +6,15 @@ import {
   DeliveryNotificationEmail,
   CancellationNotificationEmail,
   WithdrawalReceivedEmail,
+  EmailVerificationEmail,
+  PasswordResetEmail,
   type OrderConfirmationProps,
   type ShippingNotificationProps,
   type DeliveryNotificationProps,
   type CancellationNotificationProps,
   type WithdrawalReceivedProps,
+  type EmailVerificationProps,
+  type PasswordResetProps,
 } from "./templates";
 import { SHOP_NAME } from "./shared";
 
@@ -57,6 +61,12 @@ async function safeSend(
     // PII-bewusstes Log: nur Domain, nicht Local-Part der Email
     const masked = to.replace(/^([^@]{1,3})[^@]*@/, "$1***@");
     console.log(`[email:mock] → ${masked} · "${subject}" · tag=${tag}`);
+    // Dev-Hilfe: Token-Links (Verify / Passwort-Reset) sichtbar machen, damit man
+    // den Flow ohne echten Mail-Versand manuell durchklicken kann.
+    const link =
+      text.match(/https?:\/\/\S*\/konto\/\S+/)?.[0] ??
+      html.match(/https?:\/\/[^"']*\/konto\/[^"']+/)?.[0];
+    if (link) console.log(`[email:mock]   link: ${link}`);
     return { mocked: true };
   }
   const resend = getResend();
@@ -104,6 +114,20 @@ export async function sendWithdrawalReceived(to: string, props: WithdrawalReceiv
   const html = await render(WithdrawalReceivedEmail(props));
   const text = await render(WithdrawalReceivedEmail(props), { plainText: true });
   return safeSend(to, subject, html, text, "order.withdrawal");
+}
+
+export async function sendEmailVerification(to: string, props: EmailVerificationProps) {
+  const subject = "Bitte bestätigen Sie Ihre E-Mail-Adresse";
+  const html = await render(EmailVerificationEmail(props));
+  const text = await render(EmailVerificationEmail(props), { plainText: true });
+  return safeSend(to, subject, html, text, "account.verify");
+}
+
+export async function sendPasswordReset(to: string, props: PasswordResetProps) {
+  const subject = "Passwort zurücksetzen — Hagi Teppiche";
+  const html = await render(PasswordResetEmail(props));
+  const text = await render(PasswordResetEmail(props), { plainText: true });
+  return safeSend(to, subject, html, text, "account.password_reset");
 }
 
 /**

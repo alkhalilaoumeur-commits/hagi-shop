@@ -129,3 +129,50 @@ export async function cleanupAdmin(email: string) {
     await prisma.admin.delete({ where: { id: admin.id } });
   }
 }
+
+interface CustomerFactoryOpts {
+  email?: string;
+  password?: string;
+  verified?: boolean;
+  firstName?: string | null;
+  lastName?: string | null;
+}
+
+/**
+ * Erzeugt einen echten Customer (mit gehashtem Passwort). Default: verifiziert.
+ * Rückgabe enthält das Klartext-Passwort für Login-Tests.
+ */
+export async function makeCustomer(opts: CustomerFactoryOpts = {}) {
+  const { hashPassword } = await import("@/lib/security/password");
+  const email =
+    opts.email ?? `cust-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
+  const password = opts.password ?? "Sehr-Sicher-123";
+  const passwordHash = await hashPassword(password);
+  const verified = opts.verified ?? true;
+
+  const customer = await prisma.customer.create({
+    data: {
+      email,
+      passwordHash,
+      firstName: opts.firstName ?? "Test",
+      lastName: opts.lastName ?? "Kunde",
+      emailVerifiedAt: verified ? new Date() : null,
+    },
+  });
+  return { customer, email, password };
+}
+
+export async function cleanupCustomer(email: string) {
+  const customer = await prisma.customer.findUnique({ where: { email } });
+  if (!customer) return;
+  await prisma.customerSession.deleteMany({ where: { customerId: customer.id } }).catch(() => {});
+  await prisma.customerAddress.deleteMany({ where: { customerId: customer.id } }).catch(() => {});
+  await prisma.auditLog
+    .deleteMany({ where: { entityType: "Customer", entityId: customer.id } })
+    .catch(() => {});
+  // Bestellungen entkoppeln (nicht löschen — Aufbewahrungspflicht).
+  await prisma.order
+    .updateMany({ where: { customerId: customer.id }, data: { customerId: null } })
+    .catch(() => {});
+  await prisma.customer.delete({ where: { id: customer.id } }).catch(() => {});
+}

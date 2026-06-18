@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShoppingCart, Menu, X } from "lucide-react";
+import { ShoppingCart, Menu, X, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useCart } from "@/lib/cart-store";
 
@@ -65,6 +65,14 @@ export function Navbar() {
 
           <div className="flex items-center gap-4">
             <Link
+              href="/konto"
+              className="transition-colors hover:opacity-70"
+              style={{ color: lightTheme ? "#D2C9B5" : "#5A4A3A" }}
+              aria-label="Mein Konto"
+            >
+              <User className="w-5 h-5" />
+            </Link>
+            <Link
               href="/warenkorb"
               className="relative transition-colors hover:opacity-70"
               style={{ color: lightTheme ? "#D2C9B5" : "#5A4A3A" }}
@@ -116,6 +124,14 @@ export function Navbar() {
                   {link.label}
                 </Link>
               ))}
+              <Link
+                href="/konto"
+                className="py-3 text-sm uppercase tracking-[0.1em] hover:text-gold transition-colors border-b flex items-center gap-2"
+                style={{ color: "#5A4A3A", borderColor: "#E5DCC8" }}
+                onClick={() => setOpen(false)}
+              >
+                <User className="w-4 h-4" /> Mein Konto
+              </Link>
             </nav>
           </div>
         </div>

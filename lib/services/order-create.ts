@@ -19,6 +19,10 @@ export interface OrderCreateInput {
   email: string;
   phone?: string | null;
 
+  // Optional: ID des eingeloggten Kunden. Wenn gesetzt, wird die Order diesem
+  // Konto zugeordnet. Sonst greift unten der Fallback über die verifizierte E-Mail.
+  customerId?: string | null;
+
   isBusinessCustomer: boolean;
   companyName?: string | null;
   vatId?: string | null;
@@ -60,6 +64,24 @@ export interface OrderCreateResult {
   totalCents: number;
 }
 
+
+/**
+ * Ermittelt, welchem Konto eine neue Bestellung zugeordnet wird.
+ *  1. Ein explizit übergebener (eingeloggter) Kunde gewinnt immer.
+ *  2. Sonst Fallback: VERIFIZIERTER Account mit passender E-Mail. Nur verifiziert,
+ *     damit niemand über eine unbestätigte E-Mail fremde Bestellungen einsammelt.
+ */
+export async function resolveLinkedCustomerId(
+  email: string,
+  explicitCustomerId?: string | null,
+): Promise<string | null> {
+  if (explicitCustomerId) return explicitCustomerId;
+  const match = await prisma.customer.findFirst({
+    where: { email, emailVerifiedAt: { not: null }, deletedAt: null },
+    select: { id: true },
+  });
+  return match?.id ?? null;
+}
 
 function idempotencyKeyFor(email: string, items: OrderCreateInput["items"]): string {
   const sig = items
@@ -103,6 +125,8 @@ export async function createDraftOrderAndStripeSession(
   });
   const effectiveTaxRate = isReverseCharge ? 0 : taxRate;
 
+  const linkedCustomerId = await resolveLinkedCustomerId(email, input.customerId);
+
   const orderNumber = await nextOrderNumber();
   const publicToken = generateToken(32);
 
@@ -144,6 +168,7 @@ export async function createDraftOrderAndStripeSession(
         data: {
           orderNumber,
           publicToken,
+          customerId: linkedCustomerId ?? undefined,
           customerEmail: email,
           customerPhone: input.phone ?? undefined,
 
