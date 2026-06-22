@@ -3,10 +3,11 @@
 > **Diese Datei ist die Quelle der Wahrheit.** Wer (Claude in zukünftiger Session, Co-Coder, du selbst nach 2 Wochen Pause) wissen will wo wir stehen und wo's weitergeht, liest hier.
 > Bei jeder größeren Änderung pflegen.
 
-**Letztes Update:** 2026-06-18
-**Letzter Commit:** `f38d51b` — Merge Kunden-Konto v1 in `main`
-**Branch:** `main` (Kunden-Konto v1 gemergt)
-**Test-Status:** 🟢 **159/159 grün** in 15 Suites · `tsc --noEmit` 🟢 **0 Fehler**
+**Letztes Update:** 2026-06-22
+**Letzter Commit:** `5b1aee5` — Merge `fix/checkout-use-server` → `main` (Checkout-Build-Fix)
+**Branch:** `main`
+**Test-Status:** 🟢 Build grün (`prisma generate && next build`) · `tsc --noEmit` 🟢 0 Fehler
+**🟢 LIVE (Demo):** https://hagi-shop.vercel.app — auf Vercel, mit Prisma-Postgres-DB
 
 ---
 
@@ -25,8 +26,31 @@
 | Wertersatz-UI bei Widerruf (§ 357 Abs. 7 BGB, Pflicht-Begründung + Kunden-Mail) | 🟢 fertig |
 | Env-Hardening + zentraler Config-Reader | 🟢 fertig |
 | **Code Live-Gang-Ready** | **🟢 ja** |
-| Coolify-Env + Cron-Setup (manuell) | 🔴 offen |
+| **Demo-Deployment auf Vercel** | **🟢 live** (https://hagi-shop.vercel.app) |
+| Go-Live-Härtung (echte Keys/Daten, Next.js-Patch, Webhook) | 🔴 offen |
 | Anwalt-Review | 🔴 offen |
+
+---
+
+## 🚀 Live-Deployment (Vercel — Demo-Stand 2026-06-22)
+
+**URL:** https://hagi-shop.vercel.app · **Hosting:** Vercel (Projekt `hagi-shop`) · **DB:** Prisma Postgres (Vercel-Integration, `db.prisma.io`, Region EU)
+
+**Was steht:**
+- Storefront live, alle 5 Produkte laden aus der Prisma-Postgres-DB (geseedet: Produkte, Kategorien, 2 Versandzonen, 2 Rabattcodes)
+- Checkout funktioniert bis zur Stripe-Bezahlseite (Stripe **Test-Modus**, `sk_test`)
+- Alle Env-Variablen als `encrypted` in Vercel gesetzt
+
+**⚠️ Platzhalter im Demo-Stand (vor echtem Go-Live ersetzen):**
+| Variable | Aktuell | Muss werden |
+|---|---|---|
+| `STRIPE_SECRET_KEY` | `sk_test_…` | `sk_live_…` (Stripe Live-Modus) |
+| `STRIPE_WEBHOOK_SECRET` | `whsec_demo_placeholder` | echtes `whsec_` vom registrierten Webhook |
+| `RESEND_API_KEY` | `re_demo_placeholder…` | echter Resend-Key + verifizierte Domain |
+| `COMPANY_IBAN` | `DE00…0000` | echte Hagi-IBAN |
+| `COMPANY_TAX_NUMBER` | `00000/00000` | echte Steuernummer |
+
+**Bekannte Tooling-Notiz:** lokale Git-Email auf GitHub-noreply umgestellt (Vercel-Git-Author-Check); `playwright` ist keine `package.json`-Dependency (war global).
 
 ---
 
