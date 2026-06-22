@@ -13,6 +13,7 @@ dist/
 .env.production
 .env.development
 .env.new
+.env.*.bak
 
 # Build
 tsconfig.tsbuildinfo
