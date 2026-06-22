@@ -392,7 +392,7 @@ function CancelForm({
           className="w-4 h-4"
           style={{ accentColor: "#0F0A06" }}
         />
-        Vollständigen Refund auslösen (über Stripe getrennt anstoßen)
+        Vollständigen Refund automatisch über Stripe auslösen
       </label>
       <div className="flex gap-3">
         <button
