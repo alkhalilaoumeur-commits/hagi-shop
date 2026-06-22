@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { generateToken, hashToken } from "@/lib/security/tokens";
 import { hashPassword, verifyPassword } from "@/lib/security/password";
+import { verifyTotp } from "@/lib/security/totp";
 import { normalizeEmailOrThrow } from "@/lib/security/email";
 import { rateLimit, extractIp } from "./rate-limit";
 import { logAudit } from "./audit";
@@ -22,6 +23,7 @@ export interface AuthedAdmin {
 export async function loginAdmin(
   emailInput: string,
   passwordInput: string,
+  totpToken?: string,
 ): Promise<{ ok: true; admin: AuthedAdmin } | { ok: false; error: string; retryAfter?: number }> {
   const h = await headers();
   const ip = extractIp(h);
@@ -98,6 +100,38 @@ export async function loginAdmin(
       userAgent: ua,
     });
     return { ok: false, error: shouldLock ? "ACCOUNT_LOCKED" : "INVALID_CREDENTIALS" };
+  }
+
+  // Zweiter Faktor (TOTP), falls für diesen Admin aktiviert. Erst NACH korrektem
+  // Passwort — ein gültiges Passwort allein reicht nicht für eine Session.
+  if (admin.totpEnabledAt && admin.totpSecret) {
+    if (!totpToken) {
+      // Passwort war korrekt, aber der Code fehlt → UI blendet das Code-Feld ein.
+      // Kein Failed-Attempt (Passwort stimmte ja), keine Session.
+      return { ok: false, error: "TOTP_REQUIRED" };
+    }
+    if (!verifyTotp(totpToken, admin.totpSecret)) {
+      // Falscher Code zählt als Fehlversuch → schützt vor Code-Brute-Force.
+      const nextFails = admin.failedLoginAttempts + 1;
+      const shouldLock = nextFails >= MAX_FAILED_ATTEMPTS;
+      await prisma.admin.update({
+        where: { id: admin.id },
+        data: {
+          failedLoginAttempts: nextFails,
+          lockedUntil: shouldLock ? new Date(Date.now() + LOCK_DURATION_MS) : null,
+        },
+      });
+      await logAudit({
+        actorType: "system",
+        action: "admin.login_totp_failed",
+        entityType: "Admin",
+        entityId: admin.id,
+        after: { attempts: nextFails, locked: shouldLock },
+        ipAddress: ip,
+        userAgent: ua,
+      });
+      return { ok: false, error: shouldLock ? "ACCOUNT_LOCKED" : "INVALID_TOTP" };
+    }
   }
 
   // Erfolg

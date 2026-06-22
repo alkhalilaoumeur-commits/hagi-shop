@@ -9,6 +9,8 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [totpToken, setTotpToken] = useState("");
+  const [needsTotp, setNeedsTotp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -18,10 +20,17 @@ export default function AdminLoginPage() {
     startTransition(async () => {
       setError(null);
       setRetryAfter(null);
-      const result = await loginAdminAction({ email, password });
+      const result = await loginAdminAction({
+        email,
+        password,
+        totpToken: needsTotp ? totpToken : undefined,
+      });
       if (result.ok) {
         router.push(result.redirectTo);
         router.refresh();
+      } else if (result.error === "TOTP_REQUIRED") {
+        // Passwort stimmte → jetzt den zweiten Faktor abfragen (kein Fehler).
+        setNeedsTotp(true);
       } else {
         setError(translateError(result.error));
         if (result.retryAfter) setRetryAfter(result.retryAfter);
@@ -89,6 +98,32 @@ export default function AdminLoginPage() {
             />
           </div>
 
+          {needsTotp && (
+            <div>
+              <label
+                className="text-[10px] uppercase tracking-[0.18em] block mb-2"
+                style={{ color: "#5A4A3A" }}
+              >
+                2FA-Code (Authenticator-App)
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={totpToken}
+                onChange={(e) => setTotpToken(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                className="w-full px-3 py-2.5 text-sm bg-transparent focus:outline-none tracking-[0.4em] font-mono"
+                style={{ border: "1px solid #D9CDB8", color: "#0F0A06" }}
+                placeholder="000000"
+                required
+                autoFocus
+                autoComplete="one-time-code"
+              />
+              <p className="text-[10px] mt-1.5" style={{ color: "#8A7866" }}>
+                6-stelligen Code aus deiner Authenticator-App eingeben.
+              </p>
+            </div>
+          )}
+
           {error && (
             <div className="p-3 text-sm" style={{ background: "#F7EBE6", border: "1px solid #A33B2A", color: "#7E2A1D" }}>
               {error}
@@ -129,6 +164,8 @@ function translateError(code: string): string {
       return "Zu viele Anmeldeversuche. Bitte später erneut versuchen.";
     case "INVALID_INPUT":
       return "Bitte E-Mail und Passwort eingeben.";
+    case "INVALID_TOTP":
+      return "2FA-Code falsch. Bitte erneut eingeben.";
     default:
       return "Login fehlgeschlagen.";
   }
