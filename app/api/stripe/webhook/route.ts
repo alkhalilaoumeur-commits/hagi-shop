@@ -77,6 +77,21 @@ export async function POST(req: NextRequest) {
   }
 }
 
+async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3, delayMs = 800): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, delayMs * attempt));
+      }
+    }
+  }
+  throw lastErr;
+}
+
 async function handleCheckoutSessionCompleted(
   session: Stripe.Checkout.Session,
   recordId: string,
@@ -142,6 +157,13 @@ async function handleCheckoutSessionCompleted(
     include: { items: true },
   });
 
+  // Unikate nach Zahlung aus dem Lager nehmen — verhindert Doppelverkauf
+  const productIds = updated.items.map((i) => i.productId).filter((id): id is string => id !== null);
+  await prisma.product.updateMany({
+    where: { id: { in: productIds }, isUnique: true },
+    data: { inStock: false },
+  });
+
   await logAudit({
     actorType: "webhook",
     action: "order.paid",
@@ -151,31 +173,33 @@ async function handleCheckoutSessionCompleted(
   });
 
   try {
-    await sendOrderConfirmation(updated.customerEmail, {
-      customerFirstName: updated.billingFirstName,
-      orderNumber: updated.orderNumber,
-      publicToken: updated.publicToken,
-      items: updated.items.map((i) => ({
-        title: i.productTitle,
-        sku: i.productSku,
-        quantity: i.quantity,
-        unitPriceCents: i.unitPriceCents,
-        totalCents: i.subtotalCents,
-        imageUrl: i.productImageUrl,
-      })),
-      subtotalCents: updated.subtotalCents,
-      shippingCents: updated.shippingCents,
-      discountCents: updated.discountCents,
-      totalCents: updated.totalCents,
-      shippingMethodName: updated.shippingMethodName ?? "Versand",
-      estimatedDeliveryRange:
-        updated.estimatedDeliveryMinDays && updated.estimatedDeliveryMaxDays
-          ? `${updated.estimatedDeliveryMinDays}–${updated.estimatedDeliveryMaxDays}`
-          : "in Kürze",
-      isPickup: updated.deliveryType === "PICKUP",
-    });
+    await withRetry(() =>
+      sendOrderConfirmation(updated.customerEmail, {
+        customerFirstName: updated.billingFirstName,
+        orderNumber: updated.orderNumber,
+        publicToken: updated.publicToken,
+        items: updated.items.map((i) => ({
+          title: i.productTitle,
+          sku: i.productSku,
+          quantity: i.quantity,
+          unitPriceCents: i.unitPriceCents,
+          totalCents: i.subtotalCents,
+          imageUrl: i.productImageUrl,
+        })),
+        subtotalCents: updated.subtotalCents,
+        shippingCents: updated.shippingCents,
+        discountCents: updated.discountCents,
+        totalCents: updated.totalCents,
+        shippingMethodName: updated.shippingMethodName ?? "Versand",
+        estimatedDeliveryRange:
+          updated.estimatedDeliveryMinDays && updated.estimatedDeliveryMaxDays
+            ? `${updated.estimatedDeliveryMinDays}–${updated.estimatedDeliveryMaxDays}`
+            : "in Kürze",
+        isPickup: updated.deliveryType === "PICKUP",
+      }),
+    );
   } catch (mailErr) {
-    console.error("[webhook] confirmation mail failed", mailErr);
+    console.error("[webhook] confirmation mail failed after retries", mailErr);
     await logAudit({
       actorType: "webhook",
       action: "mail.confirmation_failed",
@@ -215,10 +239,28 @@ async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session) {
 }
 
 async function handlePaymentIntentFailed(intent: Stripe.PaymentIntent) {
-  const order = await prisma.order.findFirst({
+  let order = await prisma.order.findFirst({
     where: { stripePaymentIntentId: intent.id },
     select: { id: true, discountCode: true, paymentStatus: true, orderNumber: true },
   });
+
+  // Fallback: PI-ID war bei Session-Erstellung noch nicht gesetzt → über Session-ID suchen
+  if (!order) {
+    try {
+      const stripe = getStripe();
+      const sessions = await stripe.checkout.sessions.list({ payment_intent: intent.id, limit: 1 });
+      const sessionId = sessions.data[0]?.id;
+      if (sessionId) {
+        order = await prisma.order.findFirst({
+          where: { stripeSessionId: sessionId },
+          select: { id: true, discountCode: true, paymentStatus: true, orderNumber: true },
+        });
+      }
+    } catch {
+      // Stripe-Lookup-Fehler ist nicht kritisch — Order bleibt unverändert
+    }
+  }
+
   if (!order || order.paymentStatus === "PAID") return;
 
   await prisma.order.update({

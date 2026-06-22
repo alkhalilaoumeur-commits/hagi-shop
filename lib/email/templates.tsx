@@ -71,6 +71,14 @@ export function OrderConfirmationEmail(props: OrderConfirmationProps) {
             : `${props.estimatedDeliveryRange} (Werktage). Sie erhalten eine Tracking-Mail, sobald der Teppich auf dem Weg ist.`}
         </Body1>
         <CTA href={`${APP_URL}/bestellung/status/${props.publicToken}`} label="Status verfolgen" />
+        <Body1>
+          <a
+            href={`${APP_URL}/api/invoice/${props.publicToken}`}
+            style={{ color: COLORS.sienna, textDecoration: "underline", fontSize: "13px" }}
+          >
+            Rechnung als PDF herunterladen →
+          </a>
+        </Body1>
       </Section>
 
       <Section style={{ padding: "0 40px 32px" }}>

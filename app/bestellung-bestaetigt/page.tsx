@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { formatPrice } from "@/lib/format";
 import { CONTACT_EMAIL } from "@/lib/shop-config";
 import { ClearCartOnSuccess } from "@/components/shop/ClearCartOnSuccess";
+import { PendingRefresh } from "@/components/shop/PendingRefresh";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,7 @@ export default async function ConfirmationPage({ searchParams }: PageProps) {
   return (
     <main style={{ background: "#FAFAF7" }}>
       <ClearCartOnSuccess />
+      {isPending && <PendingRefresh />}
 
       <section className="pt-32 pb-12" style={{ background: "linear-gradient(180deg, #F6EEDB 0%, #FAFAF7 100%)" }}>
         <div className="max-w-page mx-auto px-6 md:px-12">
