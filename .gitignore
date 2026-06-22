@@ -7,13 +7,10 @@ out/
 dist/
 
 # Environment Files (NIE committen)
-.env
-.env.local
-.env.*.local
-.env.production
-.env.development
-.env.new
-.env.*.bak
+# Catch-all: JEDE .env-Variante ignorieren (auch .env.cpgz, .env.bak, Archive …),
+# nur die Vorlage .env.example bleibt getrackt.
+.env*
+!.env.example
 
 # Build
 tsconfig.tsbuildinfo
@@ -59,3 +56,4 @@ public/invoices/
 secrets/
 *.pem
 *.key
+.env*.local

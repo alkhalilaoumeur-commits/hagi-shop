@@ -18,8 +18,14 @@ const DARK_HERO_PATHS = ["/showroom", "/ueber-uns"];
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const count = useCart((s) => s.count());
+
+  // Warenkorb liegt im localStorage → auf dem Server unbekannt. Erst nach dem
+  // ersten Client-Render (mounted) anzeigen, damit Server- und Browser-HTML
+  // identisch sind und keine Hydration-Diskrepanz entsteht.
+  useEffect(() => setMounted(true), []);
 
   const isDarkHero = DARK_HERO_PATHS.includes(pathname);
   const lightTheme = isDarkHero && !scrolled;
@@ -78,7 +84,7 @@ export function Navbar() {
               style={{ color: lightTheme ? "#D2C9B5" : "#5A4A3A" }}
             >
               <ShoppingCart className="w-5 h-5" />
-              {count > 0 && (
+              {mounted && count > 0 && (
                 <span className="absolute -top-1 -right-1 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold" style={{ background: "#A33B2A" }}>
                   {count}
                 </span>

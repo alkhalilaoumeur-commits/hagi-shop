@@ -17,6 +17,7 @@ const NAV: NavItem[] = [
   { href: "/admin/bestellung-anlegen", label: "Showroom-Verkauf" },
   { href: "/admin/audit", label: "Audit-Log" },
   { href: "/admin/export", label: "CSV-Export" },
+  { href: "/admin/sicherheit", label: "Sicherheit" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

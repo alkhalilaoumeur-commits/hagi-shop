@@ -7,6 +7,7 @@ import { loginAdmin, logoutAdmin } from "@/lib/services/admin-auth";
 const loginSchema = z.object({
   email: z.string().email().max(254),
   password: z.string().min(1).max(256),
+  totpToken: z.string().trim().max(10).optional(),
 });
 
 export type LoginResult =
@@ -18,7 +19,7 @@ export async function loginAdminAction(rawInput: unknown): Promise<LoginResult> 
   if (!parsed.success) {
     return { ok: false, error: "INVALID_INPUT" };
   }
-  const result = await loginAdmin(parsed.data.email, parsed.data.password);
+  const result = await loginAdmin(parsed.data.email, parsed.data.password, parsed.data.totpToken);
   if (!result.ok) {
     return { ok: false, error: result.error, retryAfter: result.retryAfter };
   }

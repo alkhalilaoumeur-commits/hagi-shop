@@ -641,6 +641,19 @@ model ErrorLog {
   @@index([source])
 }
 
+/// Atomarer Fixed-Window-Zähler fürs Rate-Limiting.
+/// Ein Datensatz pro {key + Zeitfenster-Start}. Hochgezählt wird über ein
+/// einziges `INSERT ... ON CONFLICT DO UPDATE count = count + 1`-Statement →
+/// race-frei (kein Count-then-Insert mehr). Abgelaufene Buckets räumt der
+/// Cleanup-Cron weg (expiresAt < now).
+model RateLimitCounter {
+  bucketKey String   @id // `${key}:${windowStartMs}`
+  count     Int      @default(0)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
 model ConsentLog {
   id         String  @id @default(cuid())
   customerId String?

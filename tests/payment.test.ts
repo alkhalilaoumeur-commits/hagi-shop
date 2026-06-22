@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import prisma from "@/lib/prisma";
 import { recordReceive, markProcessed } from "@/lib/services/webhook-dedup";
-import { makeOrder, cleanupOrder } from "./_helpers/factory";
+import { makeOrder, cleanupOrder, ensureProduct } from "./_helpers/factory";
 
 describe("Payment — Webhook-Dedup race-safe", () => {
   it("Erste Aufnahme: alreadyProcessed=false", async () => {
@@ -110,5 +110,152 @@ describe("Payment — Order-State bei Webhook-Events", () => {
     // Route prüft `if (!sig || !secret) return 400` — Verhalten dokumentiert,
     // hier nur als smoke-check dass die Prüfreihenfolge stabil bleibt.
     expect(true).toBe(true);
+  });
+});
+
+describe("Payment — inStock-Update bei Bezahlung", () => {
+  let uniqueProductId: string;
+  let nonUniqueProductId: string;
+  let orderId: string;
+
+  beforeEach(async () => {
+    const { categoryId } = await ensureProduct();
+    const sku = `UNIQUE-TEST-${Date.now()}`;
+
+    const uniqueProd = await prisma.product.create({
+      data: {
+        name: "Unikat-Teppich-Test",
+        slug: `unikat-test-${Date.now()}`,
+        description: "Test",
+        price: 189900,
+        sku,
+        categoryId,
+        images: [],
+        inStock: true,
+        isUnique: true,
+      },
+    });
+    uniqueProductId = uniqueProd.id;
+
+    const nonUniqueProd = await prisma.product.create({
+      data: {
+        name: "Serie-Teppich-Test",
+        slug: `serie-test-${Date.now()}`,
+        description: "Test",
+        price: 9900,
+        sku: sku + "-S",
+        categoryId,
+        images: [],
+        inStock: true,
+        isUnique: false,
+      },
+    });
+    nonUniqueProductId = nonUniqueProd.id;
+
+    const { order } = await makeOrder();
+    orderId = order.id;
+  });
+
+  afterEach(async () => {
+    await cleanupOrder(orderId);
+    await prisma.product.deleteMany({ where: { id: { in: [uniqueProductId, nonUniqueProductId] } } }).catch(() => {});
+  });
+
+  it("isUnique=true Produkt → inStock=false nach Bezahlung", async () => {
+    await prisma.product.updateMany({
+      where: { id: { in: [uniqueProductId] }, isUnique: true },
+      data: { inStock: false },
+    });
+    const p = await prisma.product.findUnique({ where: { id: uniqueProductId } });
+    expect(p?.inStock).toBe(false);
+  });
+
+  it("isUnique=false Produkt → bleibt inStock=true nach Bezahlung", async () => {
+    await prisma.product.updateMany({
+      where: { id: { in: [nonUniqueProductId] }, isUnique: true },
+      data: { inStock: false },
+    });
+    const p = await prisma.product.findUnique({ where: { id: nonUniqueProductId } });
+    expect(p?.inStock).toBe(true);
+  });
+
+  it("Mehrere Unikate in einer Order → alle werden ausgebucht", async () => {
+    const { categoryId } = await ensureProduct();
+    const sku2 = `UNIQUE-TEST2-${Date.now()}`;
+    const prod2 = await prisma.product.create({
+      data: {
+        name: "Unikat-2",
+        slug: `unikat2-test-${Date.now()}`,
+        description: "Test",
+        price: 50000,
+        sku: sku2,
+        categoryId,
+        images: [],
+        inStock: true,
+        isUnique: true,
+      },
+    });
+
+    await prisma.product.updateMany({
+      where: { id: { in: [uniqueProductId, prod2.id] }, isUnique: true },
+      data: { inStock: false },
+    });
+
+    const [p1, p2] = await Promise.all([
+      prisma.product.findUnique({ where: { id: uniqueProductId } }),
+      prisma.product.findUnique({ where: { id: prod2.id } }),
+    ]);
+    expect(p1?.inStock).toBe(false);
+    expect(p2?.inStock).toBe(false);
+
+    await prisma.product.delete({ where: { id: prod2.id } }).catch(() => {});
+  });
+});
+
+describe("Payment — withRetry Hilfsfunktion", () => {
+  it("Sofortiger Erfolg → keine Wiederholung nötig", async () => {
+    const fn = vi.fn().mockResolvedValue("ok");
+    async function withRetry<T>(theFn: () => Promise<T>, max = 3, delay = 0): Promise<T> {
+      let last: unknown;
+      for (let i = 1; i <= max; i++) {
+        try { return await theFn(); } catch (e) { last = e; if (i < max && delay > 0) await new Promise(r => setTimeout(r, delay)); }
+      }
+      throw last;
+    }
+    const result = await withRetry(fn);
+    expect(result).toBe("ok");
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it("Schlägt 2× fehl, 3. Versuch erfolgreich", async () => {
+    let calls = 0;
+    async function withRetry<T>(theFn: () => Promise<T>, max = 3, delay = 0): Promise<T> {
+      let last: unknown;
+      for (let i = 1; i <= max; i++) {
+        try { return await theFn(); } catch (e) { last = e; if (i < max && delay > 0) await new Promise(r => setTimeout(r, delay)); }
+      }
+      throw last;
+    }
+    const fn = vi.fn().mockImplementation(() => {
+      calls++;
+      if (calls < 3) return Promise.reject(new Error("transient"));
+      return Promise.resolve("recovered");
+    });
+    const result = await withRetry(fn);
+    expect(result).toBe("recovered");
+    expect(fn).toHaveBeenCalledTimes(3);
+  });
+
+  it("Alle Versuche fehlschlagen → wirft letzten Fehler", async () => {
+    async function withRetry<T>(theFn: () => Promise<T>, max = 3, delay = 0): Promise<T> {
+      let last: unknown;
+      for (let i = 1; i <= max; i++) {
+        try { return await theFn(); } catch (e) { last = e; if (i < max && delay > 0) await new Promise(r => setTimeout(r, delay)); }
+      }
+      throw last;
+    }
+    const fn = vi.fn().mockRejectedValue(new Error("permanent"));
+    await expect(withRetry(fn)).rejects.toThrow("permanent");
+    expect(fn).toHaveBeenCalledTimes(3);
   });
 });

@@ -195,39 +195,105 @@ export async function cancelOrder(
   params: { reason: string; refundCents?: number },
   actor: ActorContext,
 ): Promise<{ skipped: boolean }> {
-  const result = await prisma.$transaction(async (tx) => {
-    const updated = await tx.order.updateMany({
-      where: {
-        id: orderId,
-        orderStatus: { not: "CANCELLED" },
-        fulfillmentStatus: { not: "FULFILLED" },
-      },
-      data: {
-        orderStatus: "CANCELLED",
-        cancelReason: params.reason.slice(0, 200),
-        cancelledAt: new Date(),
-        paymentStatus: params.refundCents ? "REFUNDED" : undefined,
-        refundedCents: params.refundCents ?? 0,
-        refundedAt: params.refundCents ? new Date() : null,
-      },
-    });
-    if (updated.count === 0) {
-      const exists = await tx.order.findUnique({
-        where: { id: orderId },
-        select: { id: true, orderStatus: true, fulfillmentStatus: true },
-      });
-      if (!exists) throw new Error("ORDER_NOT_FOUND");
-      if (exists.fulfillmentStatus === "FULFILLED") throw new Error("ORDER_ALREADY_SHIPPED");
-      return { skipped: true as const, order: null };
-    }
-    const order = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
-    return { skipped: false as const, order };
+  const refundCents = params.refundCents ?? 0;
+  if (refundCents < 0) throw new Error("REFUND_AMOUNT_INVALID");
+
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: {
+      id: true,
+      orderStatus: true,
+      fulfillmentStatus: true,
+      paymentStatus: true,
+      totalCents: true,
+      refundedCents: true,
+      stripePaymentIntentId: true,
+      customerEmail: true,
+      orderNumber: true,
+      billingFirstName: true,
+      discountCode: true,
+    },
   });
+  if (!order) throw new Error("ORDER_NOT_FOUND");
+  // Idempotenz: bereits storniert → früher, sauberer Skip (auch VOR jedem Stripe-Call).
+  if (order.orderStatus === "CANCELLED") return { skipped: true };
+  // Versandte Ware kann nicht storniert werden (das läuft über Widerruf/Retoure).
+  if (order.fulfillmentStatus === "FULFILLED") throw new Error("ORDER_ALREADY_SHIPPED");
+  if (refundCents > order.totalCents - order.refundedCents) throw new Error("REFUND_EXCEEDS_PAID");
 
-  if (result.skipped || !result.order) return { skipped: true };
+  // ECHTER STRIPE-REFUND — VOR der DB-Markierung.
+  // Geld-Sicherheit (analog refundWithdrawnOrder): erst wenn Stripe das Geld real
+  // ausgelöst hat, markieren wir die Order als erstattet. Schlägt Stripe fehl,
+  // bleibt der Status unverändert → Admin kann erneut auslösen. Doppel-Refund-
+  // Schutz über deterministischen Idempotency-Key.
+  let stripeRefundId: string | null = null;
+  if (refundCents > 0 && order.stripePaymentIntentId) {
+    try {
+      const stripe = getStripe();
+      const refund = await stripe.refunds.create(
+        {
+          payment_intent: order.stripePaymentIntentId,
+          amount: refundCents,
+          reason: "requested_by_customer",
+          metadata: {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            kind: "cancellation",
+          },
+        },
+        { idempotencyKey: `cancel-refund-${order.id}-${refundCents}` },
+      );
+      stripeRefundId = refund.id;
+    } catch (err) {
+      console.error("[lifecycle] Stripe-Refund (Storno) fehlgeschlagen", err);
+      await logAudit({
+        actorType: actor.actorType,
+        actorId: actor.actorId,
+        action: "order.refund_failed",
+        entityType: "Order",
+        entityId: orderId,
+        after: { refundCents, kind: "cancellation", error: String((err as Error)?.message ?? err) },
+        ipAddress: actor.ipAddress,
+        userAgent: actor.userAgent,
+      });
+      throw new Error("STRIPE_REFUND_FAILED");
+    }
+  } else if (refundCents > 0) {
+    // Order ohne PaymentIntent (Showroom-Walkin/Test) → DB-only Refund.
+    console.warn(
+      `[lifecycle] cancelOrder: Order ${orderId} ohne stripePaymentIntentId — DB-only Refund (manuell ausgleichen).`,
+    );
+  }
 
-  if (result.order.discountCode) {
-    await releaseDiscount(result.order.discountCode);
+  const isFullRefund = refundCents >= order.totalCents - order.refundedCents;
+  const updated = await prisma.order.updateMany({
+    where: {
+      id: orderId,
+      orderStatus: { not: "CANCELLED" },
+      fulfillmentStatus: { not: "FULFILLED" },
+    },
+    data: {
+      orderStatus: "CANCELLED",
+      cancelReason: params.reason.slice(0, 200),
+      cancelledAt: new Date(),
+      paymentStatus: refundCents > 0 ? (isFullRefund ? "REFUNDED" : "PARTIALLY_REFUNDED") : undefined,
+      refundedCents: order.refundedCents + refundCents,
+      refundedAt: refundCents > 0 ? new Date() : null,
+    },
+  });
+  // Zwischen Fetch und Update hat ein anderer Caller storniert/versandt → Skip.
+  // (Der Stripe-Refund oben ist durch den Idempotency-Key gegen Doppelung geschützt.)
+  if (updated.count === 0) return { skipped: true };
+
+  // Refund-Beleg nur, wenn tatsächlich erstattet wurde.
+  if (refundCents > 0) {
+    await prisma.refund.create({
+      data: { orderId, amountCents: refundCents, reason: "cancellation", stripeRefundId },
+    });
+  }
+
+  if (order.discountCode) {
+    await releaseDiscount(order.discountCode);
   }
 
   await logAudit({
@@ -236,17 +302,17 @@ export async function cancelOrder(
     action: "order.cancelled",
     entityType: "Order",
     entityId: orderId,
-    after: { reason: params.reason, refundCents: params.refundCents ?? 0 },
+    after: { reason: params.reason, refundCents, stripeRefundId },
     ipAddress: actor.ipAddress,
     userAgent: actor.userAgent,
   });
 
   try {
-    await sendCancellationNotification(result.order.customerEmail, {
-      customerFirstName: result.order.billingFirstName,
-      orderNumber: result.order.orderNumber,
+    await sendCancellationNotification(order.customerEmail, {
+      customerFirstName: order.billingFirstName,
+      orderNumber: order.orderNumber,
       reason: params.reason,
-      refundCents: params.refundCents,
+      refundCents: refundCents > 0 ? refundCents : undefined,
     });
   } catch (err) {
     console.error("[lifecycle] cancellation mail failed", err);
