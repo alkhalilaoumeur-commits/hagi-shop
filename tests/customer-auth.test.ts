@@ -72,9 +72,9 @@ beforeEach(async () => {
   cookieJar.clear();
   sendVerifyMock.mockClear();
   sendResetMock.mockClear();
-  // Rate-Limit-Zähler (auditLog action="rate.hit") leeren, sonst akkumulieren
-  // die Aufrufe derselben Test-IP über mehrere Tests hinweg.
-  await prisma.auditLog.deleteMany({ where: { action: "rate.hit" } });
+  // Rate-Limit-Zähler leeren, sonst akkumulieren die Aufrufe derselben Test-IP
+  // über mehrere Tests hinweg.
+  await prisma.rateLimitCounter.deleteMany({});
 });
 
 afterEach(async () => {

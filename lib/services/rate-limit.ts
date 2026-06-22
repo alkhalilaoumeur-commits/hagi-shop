@@ -1,13 +1,18 @@
 import prisma from "@/lib/prisma";
 
 /**
- * Postgres-basiertes Rate-Limiting.
+ * Postgres-basiertes Rate-Limiting (atomar).
  *
- * Nutzt einen eigenen kleinen Counter pro {key, window-start}. Sliding-Window
- * über INSERT + DELETE-OLD. Reicht für niedrige bis mittlere Last (< 100 req/s).
+ * Fixed-Window-Counter in der Tabelle `RateLimitCounter`: pro {key + Fenster-Start}
+ * existiert genau eine Zeile, hochgezählt über ein einziges atomares
+ * `INSERT … ON CONFLICT DO UPDATE count = count + 1 RETURNING count`. Damit kann
+ * kein paralleler Request "unter dem Limit durchschlüpfen" (das war der Race im
+ * alten Count-then-Insert-Ansatz über auditLog). Abgelaufene Buckets räumt der
+ * Cleanup-Cron weg.
  *
- * In Production später ersetzen durch Upstash Redis Sliding-Window für höhere
- * Last + global verteilte Edge.
+ * Trade-off Fixed-Window: an der Fenstergrenze theoretisch bis 2× Limit. Für
+ * Login-/Token-Throttling akzeptabel. Für höhere Last später Upstash Redis
+ * Sliding-Window.
  *
  * Pattern:
  *   const { allowed, retryAfter } = await rateLimit({ key: `ip:${ip}:invoice`, limit: 10, windowSeconds: 60 });
@@ -28,37 +33,35 @@ interface RateLimitResult {
 
 export async function rateLimit(input: RateLimitInput): Promise<RateLimitResult> {
   const now = Date.now();
-  const windowStart = new Date(now - input.windowSeconds * 1000);
+  const windowMs = input.windowSeconds * 1000;
+  // Fixed-Window: alle Requests im selben Zeitfenster teilen sich einen Bucket.
+  const windowStart = Math.floor(now / windowMs) * windowMs;
+  const bucketKey = `${input.key}:${windowStart}`;
+  const expiresAt = new Date(windowStart + windowMs);
 
-  const count = await prisma.auditLog.count({
-    where: {
-      action: "rate.hit",
-      entityType: "RateLimit",
-      entityId: input.key,
-      createdAt: { gte: windowStart },
-    },
-  });
+  // ATOMAR: ein einziges INSERT…ON CONFLICT DO UPDATE count+1 RETURNING count.
+  // Postgres serialisiert den Upsert pro Zeile → kein Count-then-Insert-Race mehr,
+  // parallele Requests können nicht gemeinsam "unter dem Limit durchschlüpfen".
+  const rows = await prisma.$queryRaw<{ count: number }[]>`
+    INSERT INTO "RateLimitCounter" ("bucketKey", "count", "expiresAt")
+    VALUES (${bucketKey}, 1, ${expiresAt})
+    ON CONFLICT ("bucketKey") DO UPDATE SET "count" = "RateLimitCounter"."count" + 1
+    RETURNING "count"
+  `;
+  const count = Number(rows[0]?.count ?? 1);
 
-  if (count >= input.limit) {
+  if (count > input.limit) {
     return {
       allowed: false,
       remaining: 0,
-      retryAfter: input.windowSeconds,
+      // Bis zum Ende des aktuellen Fensters warten.
+      retryAfter: Math.max(1, Math.ceil((windowStart + windowMs - now) / 1000)),
     };
   }
 
-  await prisma.auditLog.create({
-    data: {
-      actorType: "system",
-      action: "rate.hit",
-      entityType: "RateLimit",
-      entityId: input.key,
-    },
-  });
-
   return {
     allowed: true,
-    remaining: input.limit - count - 1,
+    remaining: Math.max(0, input.limit - count),
     retryAfter: 0,
   };
 }
@@ -72,15 +75,16 @@ export async function rateLimit(input: RateLimitInput): Promise<RateLimitResult>
  * Ohne Cron wächst auditLog linear → DoS-Verstärker.
  */
 export async function cleanupRateLimitLogs(): Promise<number> {
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-  const result = await prisma.auditLog.deleteMany({
-    where: {
-      action: "rate.hit",
-      entityType: "RateLimit",
-      createdAt: { lt: oneHourAgo },
-    },
+  // Abgelaufene Buckets entfernen (Fenster ist vorbei → nicht mehr relevant).
+  const counters = await prisma.rateLimitCounter.deleteMany({
+    where: { expiresAt: { lt: new Date() } },
   });
-  return result.count;
+  // Legacy: alte auditLog "rate.hit"-Zeilen aus der Zeit vor dem Tabellen-Umbau.
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const legacy = await prisma.auditLog.deleteMany({
+    where: { action: "rate.hit", entityType: "RateLimit", createdAt: { lt: oneHourAgo } },
+  });
+  return counters.count + legacy.count;
 }
 
 /**
