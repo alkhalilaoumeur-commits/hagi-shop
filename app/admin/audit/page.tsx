@@ -1,6 +1,12 @@
 import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/services/admin-auth";
+import { PageHeader } from "@/components/admin/ui/PageHeader";
+import { Card } from "@/components/admin/ui/Card";
+import { StatusBadge } from "@/components/admin/ui/StatusBadge";
+import { SectionLabel } from "@/components/admin/ui/Field";
+import { Pagination } from "@/components/admin/ui/Pagination";
+import type { Tone } from "@/lib/admin/status-labels";
 
 export const dynamic = "force-dynamic";
 
@@ -11,13 +17,14 @@ interface SearchParams {
   action?: string;
   entityType?: string;
   page?: string;
+  [key: string]: string | undefined;
 }
 
-const ACTOR_COLORS: Record<string, string> = {
-  admin: "#0F0A06",
-  customer: "#B89968",
-  system: "#5C7A4B",
-  webhook: "#A33B2A",
+const ACTOR_TONE: Record<string, Tone> = {
+  admin: "dark",
+  customer: "warning",
+  system: "success",
+  webhook: "danger",
 };
 
 export default async function AuditLogPage({
@@ -39,12 +46,7 @@ export default async function AuditLogPage({
   const skip = (page - 1) * PAGE_SIZE;
 
   const [logs, total, actionsTop] = await Promise.all([
-    prisma.auditLog.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      take: PAGE_SIZE,
-      skip,
-    }),
+    prisma.auditLog.findMany({ where, orderBy: { createdAt: "desc" }, take: PAGE_SIZE, skip }),
     prisma.auditLog.count({ where }),
     prisma.auditLog.groupBy({
       by: ["action"],
@@ -59,43 +61,31 @@ export default async function AuditLogPage({
 
   return (
     <div className="space-y-8">
-      <header>
-        <p className="text-[10px] uppercase tracking-[0.25em] mb-3" style={{ color: "#B89968" }}>
-          ✦ Audit-Log
-        </p>
-        <h1 className="font-serif" style={{ fontSize: "clamp(2rem, 4vw, 3rem)", color: "#0F0A06" }}>
-          Aktivität
-        </h1>
-        <p className="text-base mt-3" style={{ color: "#5A4A3A" }}>
-          Jede Admin-Aktion + System-Event + Webhook wird geloggt. Pflicht für DSGVO + Compliance.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Audit-Log"
+        title="Aktivität"
+        description="Jede Admin-Aktion + System-Event + Webhook wird geloggt. Pflicht für DSGVO + Compliance."
+      />
 
-      <section>
-        <p className="text-[10px] uppercase tracking-[0.22em] mb-3" style={{ color: "#B89968" }}>
-          ✦ Top-Aktionen
-        </p>
+      <section className="space-y-3">
+        <SectionLabel>Top-Aktionen</SectionLabel>
         <div className="flex flex-wrap gap-2">
-          {actionsTop.map((a) => (
-            <Link
-              key={a.action}
-              href={`?action=${encodeURIComponent(a.action)}`}
-              className="px-3 py-1.5 text-[11px] font-mono"
-              style={{
-                background: params.action === a.action ? "#0F0A06" : "#F0EAD8",
-                color: params.action === a.action ? "#FAFAF7" : "#0F0A06",
-                border: "1px solid #E5DCC8",
-              }}
-            >
-              {a.action} <span className="opacity-60">({a._count._all})</span>
-            </Link>
-          ))}
+          {actionsTop.map((a) => {
+            const active = params.action === a.action;
+            return (
+              <Link
+                key={a.action}
+                href={`?action=${encodeURIComponent(a.action)}`}
+                className={`px-3 py-1.5 text-[11px] font-mono border border-border transition-colors ${
+                  active ? "bg-ink text-bone" : "bg-bg-elevated text-ink hover:bg-bg-sand"
+                }`}
+              >
+                {a.action} <span className="opacity-60">({a._count._all})</span>
+              </Link>
+            );
+          })}
           {params.action && (
-            <Link
-              href="?"
-              className="px-3 py-1.5 text-[11px] uppercase tracking-[0.15em]"
-              style={{ color: "#A33B2A" }}
-            >
+            <Link href="?" className="px-3 py-1.5 text-[11px] uppercase tracking-[0.15em] text-sienna">
               ✕ Filter aufheben
             </Link>
           )}
@@ -103,21 +93,21 @@ export default async function AuditLogPage({
       </section>
 
       <section>
-        <div className="overflow-x-auto" style={{ background: "#FFFFFF", border: "1px solid #E5DCC8" }}>
+        <Card className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr style={{ background: "#F0EAD8" }}>
-                <th className="text-left px-4 py-2 text-[10px] uppercase tracking-[0.15em]" style={{ color: "#5A4A3A" }}>Zeit</th>
-                <th className="text-left px-4 py-2 text-[10px] uppercase tracking-[0.15em]" style={{ color: "#5A4A3A" }}>Akteur</th>
-                <th className="text-left px-4 py-2 text-[10px] uppercase tracking-[0.15em]" style={{ color: "#5A4A3A" }}>Aktion</th>
-                <th className="text-left px-4 py-2 text-[10px] uppercase tracking-[0.15em]" style={{ color: "#5A4A3A" }}>Entity</th>
-                <th className="text-left px-4 py-2 text-[10px] uppercase tracking-[0.15em]" style={{ color: "#5A4A3A" }}>IP</th>
+              <tr className="bg-bg-elevated">
+                {["Zeit", "Akteur", "Aktion", "Entity", "IP"].map((h) => (
+                  <th key={h} className="text-left px-4 py-2 text-[10px] uppercase tracking-[0.15em] text-ink-muted">
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {logs.map((log) => (
-                <tr key={log.id} style={{ borderTop: "1px solid #E5DCC8" }}>
-                  <td className="px-4 py-2 font-mono text-[11px] whitespace-nowrap" style={{ color: "#8A7866" }}>
+                <tr key={log.id} className="border-t border-border">
+                  <td className="px-4 py-2 font-mono text-[11px] whitespace-nowrap text-muted">
                     {new Intl.DateTimeFormat("de-DE", {
                       day: "2-digit",
                       month: "2-digit",
@@ -128,55 +118,26 @@ export default async function AuditLogPage({
                     }).format(log.createdAt)}
                   </td>
                   <td className="px-4 py-2">
-                    <span
-                      className="text-[9px] uppercase tracking-[0.18em] font-bold px-1.5 py-0.5"
-                      style={{ background: ACTOR_COLORS[log.actorType] ?? "#8A7866", color: "#FAFAF7" }}
-                    >
-                      {log.actorType}
-                    </span>
+                    <StatusBadge label={log.actorType} tone={ACTOR_TONE[log.actorType] ?? "neutral"} />
                   </td>
-                  <td className="px-4 py-2 font-mono text-[12px]" style={{ color: "#0F0A06" }}>{log.action}</td>
-                  <td className="px-4 py-2 text-[11px]" style={{ color: "#5A4A3A" }}>
+                  <td className="px-4 py-2 font-mono text-[12px] text-ink">{log.action}</td>
+                  <td className="px-4 py-2 text-[11px] text-ink-muted">
                     {log.entityType === "Order" ? (
-                      <Link href={`/admin/bestellungen/${log.entityId}`} className="underline" style={{ color: "#A33B2A" }}>
+                      <Link href={`/admin/bestellungen/${log.entityId}`} className="underline text-sienna">
                         {log.entityType} · {log.entityId.slice(-8)}
                       </Link>
                     ) : (
                       `${log.entityType} · ${log.entityId.slice(-8)}`
                     )}
                   </td>
-                  <td className="px-4 py-2 font-mono text-[11px]" style={{ color: "#8A7866" }}>
-                    {log.ipAddress ?? "-"}
-                  </td>
+                  <td className="px-4 py-2 font-mono text-[11px] text-muted">{log.ipAddress ?? "-"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.15em] mt-4" style={{ color: "#5A4A3A" }}>
-            <span>Seite {page} von {totalPages} · {total} Einträge</span>
-            <div className="flex gap-3">
-              {page > 1 && (
-                <Link
-                  href={`?${new URLSearchParams({ ...params, page: String(page - 1) }).toString()}`}
-                  style={{ color: "#A33B2A" }}
-                >
-                  ← Zurück
-                </Link>
-              )}
-              {page < totalPages && (
-                <Link
-                  href={`?${new URLSearchParams({ ...params, page: String(page + 1) }).toString()}`}
-                  style={{ color: "#A33B2A" }}
-                >
-                  Vor →
-                </Link>
-              )}
-            </div>
-          </div>
-        )}
+        <Pagination page={page} totalPages={totalPages} total={total} unit="Einträge" params={params} />
       </section>
     </div>
   );
