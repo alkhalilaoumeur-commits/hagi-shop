@@ -152,24 +152,29 @@ export async function loginAdmin(
 }
 
 export async function getCurrentAdmin(): Promise<AuthedAdmin | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(ADMIN_SESSION_COOKIE)?.value;
-  if (!token || token.length < 16 || token.length > 100) return null;
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(ADMIN_SESSION_COOKIE)?.value;
+    if (!token || token.length < 16 || token.length > 100) return null;
 
-  const tokenHash = hashToken(token);
-  const session = await prisma.adminSession.findUnique({
-    where: { tokenHash },
-    include: { admin: true },
-  });
+    const tokenHash = hashToken(token);
+    const session = await prisma.adminSession.findUnique({
+      where: { tokenHash },
+      include: { admin: true },
+    });
 
-  if (!session || session.revokedAt || session.expiresAt < new Date()) return null;
-  if (!session.admin.isActive) return null;
+    if (!session || session.revokedAt || session.expiresAt < new Date()) return null;
+    if (!session.admin.isActive) return null;
 
-  return {
-    id: session.admin.id,
-    email: session.admin.email,
-    displayName: session.admin.displayName,
-  };
+    return {
+      id: session.admin.id,
+      email: session.admin.email,
+      displayName: session.admin.displayName,
+    };
+  } catch {
+    // DB nicht erreichbar (z.B. während next build ohne DATABASE_URL) → nicht eingeloggt
+    return null;
+  }
 }
 
 export async function requireAdmin(): Promise<AuthedAdmin> {

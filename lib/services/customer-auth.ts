@@ -351,25 +351,29 @@ async function issueSession(customerId: string, ip: string, ua: string | null): 
 }
 
 export async function getCurrentCustomer(): Promise<AuthedCustomer | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(CUSTOMER_SESSION_COOKIE)?.value;
-  if (!token || token.length < 16 || token.length > 100) return null;
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(CUSTOMER_SESSION_COOKIE)?.value;
+    if (!token || token.length < 16 || token.length > 100) return null;
 
-  const tokenHash = hashToken(token);
-  const session = await prisma.customerSession.findUnique({
-    where: { tokenHash },
-    include: { customer: true },
-  });
+    const tokenHash = hashToken(token);
+    const session = await prisma.customerSession.findUnique({
+      where: { tokenHash },
+      include: { customer: true },
+    });
 
-  if (!session || session.revokedAt || session.expiresAt < new Date()) return null;
-  if (session.customer.deletedAt) return null;
+    if (!session || session.revokedAt || session.expiresAt < new Date()) return null;
+    if (session.customer.deletedAt) return null;
 
-  return {
-    id: session.customer.id,
-    email: session.customer.email,
-    firstName: session.customer.firstName,
-    lastName: session.customer.lastName,
-  };
+    return {
+      id: session.customer.id,
+      email: session.customer.email,
+      firstName: session.customer.firstName,
+      lastName: session.customer.lastName,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function requireCustomer(): Promise<AuthedCustomer> {
