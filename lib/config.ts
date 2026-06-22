@@ -34,6 +34,9 @@ export const APP_URL = requireInProd(
 export const DATABASE_URL = (() => {
   const v = process.env.DATABASE_URL;
   if (!v || v.trim().length === 0) {
+    // Während next build läuft keine DB-Verbindung — Placeholder verhindert Build-Crash.
+    // Zur Laufzeit schlägt Prisma mit klarem Fehler fehl wenn URL fehlt.
+    if (process.env.NEXT_PHASE === "phase-production-build") return "postgresql://build-placeholder/db";
     throw new Error("DATABASE_URL fehlt. Ohne Datenbank-URL kann die App nicht starten.");
   }
   return v;
