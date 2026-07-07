@@ -91,8 +91,9 @@
 - **B4-F1 (HIGH) Art. 17 Anonymisierung — Service gebaut:** `lib/services/gdpr.ts::anonymizeCustomer` nullt Konto-PII (Name/Phone/Email→Platzhalter/passwordHash/Tokens/IP/companyName/vatId), löscht Adressbuch, widerruft Sessions, nullt Consent-IP/UA, entkoppelt Orders vom Konto (Rechnungsdaten bleiben für §147 AO/§257 HGB — Art. 17 Abs. 3 lit. b), setzt `deletedAt`+`anonymizedAt`, Audit `customer.anonymized`. Idempotent. Regressionstest `tests/gdpr.test.ts` (3 Tests: keine PII, Idempotenz, unbekannter Kunde). **Offen (MANUELLE SCHRITTE):** Admin-UI-Button + Self-Service-Trigger im Kundenkonto; Retention-Cron für Orders JENSEITS der 10-Jahres-Frist. Service ist einsatzbereit, nur die Auslöser fehlen.
 - **B4-F3 (MEDIUM) AuditLog actorId** — von Klartext-`customerEmail` auf `order.id` umgestellt (`widerruf/[token]/route.ts`, `withdrawal.ts`) → keine PII mehr im Audit-Actor.
 
-### Test-Lücken Auth (Block 1)
-- Kein „ohne Session → abgewiesen"-Test für `export-orders` + mutierende Server-Actions (`adminMark*`, `adminCancel/Refund`, `createManualOrder`, `adminUpdateInternalNote`). → Regressionstest `admin-action-auth.test.ts` ergänzen.
+### ✅ Test-Lücken Auth (Block 1) — GESCHLOSSEN
+- Neuer Regressionstest `tests/admin-action-auth.test.ts` (11 Tests): beweist, dass alle mutierenden Server-Actions (`adminMarkShipped/Delivered/Cancel/ReturnReceived/RefundWithdrawal/UpdateInternalNote`, `createManualOrderAction`, `start/confirm/disableTotpAction`) + `GET /api/admin/export-orders` ohne gültige Session abbrechen (requireAdmin wirft, keine DB-Mutation, kein PII-CSV).
+- Zusammen mit `admin-route-auth.test.ts` (API-Routen) + `admin-2fa.test.ts` sind damit ALLE Admin-Routen/Actions durch „ohne Session → abgewiesen"-Tests abgedeckt. Abbruchkriterium 1 erfüllt.
 
 ---
 
