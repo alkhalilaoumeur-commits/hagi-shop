@@ -13,6 +13,7 @@ import { normalizeEmailOrThrow } from "@/lib/security/email";
 import { extractIp } from "@/lib/services/rate-limit";
 import { logAudit } from "@/lib/services/audit";
 import { applicableTaxRate, taxFromGross } from "@/lib/services/tax";
+import { claimUniqueStock } from "@/lib/services/stock";
 
 const manualOrderSchema = z.object({
   productId: z.string().min(1).max(128),
@@ -66,8 +67,18 @@ export async function createManualOrderAction(rawInput: unknown): Promise<
   const taxRate = applicableTaxRate(product.category?.slug ?? null);
   const taxLine = taxFromGross(subtotal, taxRate);
 
-  const order = await prisma.$transaction(async (tx) => {
-    return tx.order.create({
+  let order;
+  try {
+    order = await prisma.$transaction(async (tx) => {
+      // Unikat atomar im selben Transaktions-Scope claimen (verhindert Doppelverkauf
+      // gegen parallele Manual-Orders ODER einen zeitgleichen Online-Kauf).
+      if (product.isUnique) {
+        const { unavailable } = await claimUniqueStock(tx, [product.id]);
+        if (unavailable.length > 0) {
+          throw new Error("PRODUCT_UNAVAILABLE");
+        }
+      }
+      return tx.order.create({
       data: {
         orderNumber,
         publicToken,
@@ -141,14 +152,13 @@ export async function createManualOrderAction(rawInput: unknown): Promise<
           ],
         },
       },
+      });
     });
-  });
-
-  if (product.isUnique) {
-    await prisma.product.update({
-      where: { id: product.id },
-      data: { inStock: false },
-    });
+  } catch (err) {
+    if (err instanceof Error && err.message === "PRODUCT_UNAVAILABLE") {
+      return { ok: false, error: "PRODUCT_UNAVAILABLE" };
+    }
+    throw err;
   }
 
   await logAudit({

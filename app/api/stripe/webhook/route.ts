@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { sendOrderConfirmation } from "@/lib/email/send";
 import { recordReceive, markProcessed, markError } from "@/lib/services/webhook-dedup";
 import { releaseDiscount } from "@/lib/services/discount";
+import { claimUniqueStock } from "@/lib/services/stock";
 import { logAudit } from "@/lib/services/audit";
 import { logError } from "@/lib/services/error-log";
 import type { Prisma } from "@prisma/client";
@@ -13,6 +14,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_BODY_BYTES = 1_000_000;
+
+/** Wird geworfen, wenn ein bereits verkauftes Unikat erneut bezahlt wurde. */
+class OversoldError extends Error {
+  constructor(public readonly productIds: string[]) {
+    super("OVERSOLD");
+  }
+}
 
 export async function POST(req: NextRequest) {
   const sig = req.headers.get("stripe-signature");
@@ -142,27 +150,18 @@ async function handleCheckoutSessionCompleted(
 
   const charge = await getPaymentMethodInfo(paymentIntentId);
 
-  const updated = await prisma.order.update({
-    where: { id: order.id },
-    data: {
-      paymentStatus: "PAID",
-      orderStatus: "CONFIRMED",
-      paidCents,
-      paidAt: new Date(),
-      confirmedAt: new Date(),
-      stripePaymentIntentId: paymentIntentId ?? order.stripePaymentIntentId,
-      paymentMethodType: charge?.type ?? null,
-      paymentMethodLast4: charge?.last4 ?? null,
-    },
-    include: { items: true },
-  });
+  const productIds = order.items.map((i) => i.productId).filter((id): id is string => id !== null);
 
-  // Unikate nach Zahlung aus dem Lager nehmen — verhindert Doppelverkauf
-  const productIds = updated.items.map((i) => i.productId).filter((id): id is string => id !== null);
-  await prisma.product.updateMany({
-    where: { id: { in: productIds }, isUnique: true },
-    data: { inStock: false },
+  // Bestands-Claim und PAID-Markierung in EINER Transaktion: verhindert
+  // Doppelverkauf von Unikaten (zwei bezahlte Orders auf denselben Teppich) und
+  // bleibt idempotent gegen Stripe-Webhook-Retries (rollt bei Oversold komplett zurück).
+  const updated = await confirmPaidOrder(order, productIds, {
+    paidCents,
+    paymentIntentId,
+    paymentMethodType: charge?.type ?? null,
+    paymentMethodLast4: charge?.last4 ?? null,
   });
+  if (!updated) return; // Oversold: Unikat war schon verkauft → in confirmPaidOrder erstattet + storniert
 
   await logAudit({
     actorType: "webhook",
@@ -208,6 +207,115 @@ async function handleCheckoutSessionCompleted(
       after: { error: mailErr instanceof Error ? mailErr.message : String(mailErr) },
     });
   }
+}
+
+/**
+ * Setzt die Order in EINER Transaktion auf PAID/CONFIRMED und claimt die Unikate.
+ * Wirft intern `OversoldError`, wenn ein Unikat bereits verkauft war — dann wird
+ * die Transaktion zurückgerollt (kein Bestand geändert, Order nicht PAID) und der
+ * Kunde in `handleOversoldOrder` automatisch erstattet + die Order storniert.
+ * Rückgabe `null` = Oversold behandelt; sonst die aktualisierte Order inkl. Items.
+ */
+async function confirmPaidOrder(
+  order: { id: string; discountCode: string | null; orderNumber: string; stripePaymentIntentId: string | null },
+  productIds: string[],
+  opts: {
+    paidCents: number;
+    paymentIntentId: string | null;
+    paymentMethodType: string | null;
+    paymentMethodLast4: string | null;
+  },
+) {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const { unavailable } = await claimUniqueStock(tx, productIds);
+      if (unavailable.length > 0) throw new OversoldError(unavailable);
+      return tx.order.update({
+        where: { id: order.id },
+        data: {
+          paymentStatus: "PAID",
+          orderStatus: "CONFIRMED",
+          paidCents: opts.paidCents,
+          paidAt: new Date(),
+          confirmedAt: new Date(),
+          stripePaymentIntentId: opts.paymentIntentId ?? order.stripePaymentIntentId,
+          paymentMethodType: opts.paymentMethodType,
+          paymentMethodLast4: opts.paymentMethodLast4,
+        },
+        include: { items: true },
+      });
+    });
+  } catch (err) {
+    if (err instanceof OversoldError) {
+      await handleOversoldOrder(order, opts.paymentIntentId, opts.paidCents, err.productIds);
+      return null;
+    }
+    throw err;
+  }
+}
+
+/**
+ * Der Kunde hat für ein bereits verkauftes Unikat bezahlt. Voll erstatten (echter
+ * Stripe-Refund, idempotent), Order stornieren, Rabatt freigeben, Admin alarmieren.
+ */
+async function handleOversoldOrder(
+  order: { id: string; discountCode: string | null; orderNumber: string; stripePaymentIntentId: string | null },
+  paymentIntentId: string | null,
+  paidCents: number,
+  productIds: string[],
+) {
+  let refunded = false;
+  if (paymentIntentId) {
+    try {
+      const stripe = getStripe();
+      await stripe.refunds.create(
+        { payment_intent: paymentIntentId, reason: "duplicate" },
+        { idempotencyKey: `oversold-refund-${order.id}` },
+      );
+      refunded = true;
+    } catch (refundErr) {
+      await logError({
+        source: "api/stripe/webhook",
+        error: refundErr,
+        context: { op: "oversold_refund_failed", orderId: order.id, orderNumber: order.orderNumber },
+      });
+    }
+  }
+
+  await prisma.order.update({
+    where: { id: order.id },
+    data: {
+      paymentStatus: refunded ? "REFUNDED" : "PAID",
+      orderStatus: "CANCELLED",
+      paidCents,
+      paidAt: new Date(),
+      stripePaymentIntentId: paymentIntentId ?? order.stripePaymentIntentId,
+      cancelReason: "oversold_unique_item",
+      cancelledAt: new Date(),
+      ...(refunded ? { refundedCents: paidCents, refundedAt: new Date() } : {}),
+    },
+  });
+
+  if (order.discountCode) {
+    await releaseDiscount(order.discountCode).catch(() => {});
+  }
+
+  await logAudit({
+    actorType: "webhook",
+    action: "order.oversold",
+    entityType: "Order",
+    entityId: order.id,
+    after: { orderNumber: order.orderNumber, refunded, paidCents, productIds },
+  });
+
+  // Als Fehler protokollieren, damit es im Admin-Sicherheits-Dashboard sichtbar wird.
+  await logError({
+    source: "api/stripe/webhook",
+    error: new Error(
+      `OVERSOLD: Unikat(e) ${productIds.join(", ")} bereits verkauft, Order ${order.orderNumber} ${refunded ? "automatisch erstattet" : "NICHT erstattet — manueller Refund nötig!"}`,
+    ),
+    context: { op: "oversold", orderId: order.id, orderNumber: order.orderNumber, refunded },
+  });
 }
 
 async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session) {

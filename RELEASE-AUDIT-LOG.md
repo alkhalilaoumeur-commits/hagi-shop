@@ -14,7 +14,7 @@
 | 0 | Bestandsaufnahme & Testbasis | ✅ ABGESCHLOSSEN |
 | 1 | Auth & Zugriffskontrolle | ✅ VERIFIZIERT (sauber) — Test-Lücke offen |
 | 2 | Geld & Zahlungsfluss | 🔄 Findings offen |
-| 3 | Order-Lebenszyklus & Concurrency | 🔄 Findings offen (HIGH) |
+| 3 | Order-Lebenszyklus & Concurrency | 🔄 F1(HIGH) ✅ gefixt · F2/F3 offen |
 | 4 | Token-Routen & Datenschutz/PII | 🔄 Findings offen (HIGH) |
 | 5 | Input-Validierung & Injection | 🔄 Findings offen |
 | 6 | UI-Flows E2E (Playwright) | ⏳ offen |
@@ -57,6 +57,19 @@
 | B4-F4 | 🔵 LOW | 4 | Token-Routen ohne `no-referrer`-Override; Status-Seite ohne explizites `no-store`/`X-Robots-Tag` | `next.config.mjs:22`, `status/[token]/page.tsx` |
 | B3-F4 | 🔵 LOW | 3 | Kein Bestands-Release bei Storno/Widerruf (Umsatz-, kein Security-Bug) | lifecycle |
 | B5-F4 | ℹ️ INFO | 5 | Roh-HTML-Mail interpoliert `customerEmail` ohne Escape (heute durch Zod `.email()` mitigiert) | `send.ts:168-171` |
+
+---
+
+## FIX-PROTOKOLL
+
+### ✅ B3-F1 (HIGH) — Unikat-Doppelverkauf behoben
+- **Vorher (rot):** `webhook/route.ts` flippte `inStock` ohne `inStock:true`-Guard/count, NACH bedingungsloser PAID-Markierung; Manual-Order flippte außerhalb der Transaktion (read-then-write). Zwei bezahlte Orders auf denselben Teppich → beide bestätigt.
+- **Fix:** Neuer gemeinsamer atomarer Claim `lib/services/stock.ts::claimUniqueStock` (findMany isUnique + per-id `updateMany` mit `inStock:true`-Guard, meldet `unavailable`).
+  - Webhook (`app/api/stripe/webhook/route.ts`): Claim + PAID-Markierung jetzt in EINER `$transaction` (`confirmPaidOrder`). Bei Oversold → Rollback + `handleOversoldOrder`: echter Stripe-Refund (idempotent `oversold-refund-<id>`), Order `CANCELLED`, Audit `order.oversold` + ErrorLog (Admin-Sichtbarkeit). Idempotent gegen Webhook-Retries (PAID-Early-Return + Transaktions-Rollback).
+  - Manual-Order (`app/actions/admin-manual-order.ts`): Claim in die bestehende `$transaction` gezogen, Post-TX-Flip entfernt, `PRODUCT_UNAVAILABLE` bei Konflikt.
+- **Regressionstest:** `tests/stock-concurrency.test.ts` (4 Tests, u.a. 3 PARALLELE Claims → genau 1 gewinnt). Vorher gab es diesen Schutz nicht → wäre rot gewesen.
+- **Verifikation:** `npx tsc --noEmit` sauber; volle Suite 20 Files / 200 Tests grün.
+- **Rest-Enhancement (nicht Security):** Online-Checkout reserviert weiterhin nicht schon bei Session-Erstellung (nur Safety-Net beim Payment via Auto-Refund). Optionale Reservierung-bei-Checkout = UX-Verbesserung, in Block 10 als Enhancement notiert. Admin-Alert bei Oversold aktuell via ErrorLog/Audit; dedizierte E-Mail wäre nice-to-have.
 
 ### Test-Lücken Auth (Block 1)
 - Kein „ohne Session → abgewiesen"-Test für `export-orders` + mutierende Server-Actions (`adminMark*`, `adminCancel/Refund`, `createManualOrder`, `adminUpdateInternalNote`). → Regressionstest `admin-action-auth.test.ts` ergänzen.
