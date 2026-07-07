@@ -85,6 +85,12 @@
 - **B2-F3 (LOW) Amount-Mismatch** — bewusst AKZEPTIERT: Der gezahlte Betrag entsteht aus der serverseitig gebauten Stripe-Session (Client kann Preis/Menge nicht manipulieren, verifiziert Block 2 Punkt 3). Ein echter Mismatch ist praktisch nur „Order nach Session verändert"; Blockieren würde legitime Orders riskieren. Bleibt als Audit-Log. Wird durch B3-F1-Fix (atomarer Claim) zusätzlich entschärft.
 - **`stackable`** — toter Flag by design (Order hat nur ein `discountCode`-Feld, kein Stacking möglich). Kein Fix nötig.
 
+### 🔄 Block 4 — Datenschutz/PII (Fixes, teilweise)
+- **B4-F2 (HIGH) PaymentEvent-Payload minimiert:** `lib/services/stripe-redact.ts::redactStripeEvent` verwirft `customer_details`/E-Mail/Name/Adresse/Telefon VOR dem Persistieren; nur Debug-Felder (id/type/amount/payment_intent/metadata) bleiben. Webhook nutzt es (`route.ts`). Regressionstest `tests/stripe-redact.test.ts`.
+- **B4-F4 (LOW) Security-/Token-Header** (`next.config.mjs`): global Permissions-Policy, CSP `frame-ancestors/base-uri/form-action`, HSTS (prod-only); Token-Seiten (`bestellung/status`, `widerruf-antrag`, `api/invoice`, `api/widerruf`) mit `no-store`/`noindex`/`no-referrer`.
+- **B4-F1 (HIGH) Art. 17 Anonymisierung** — Status siehe unten.
+- **B4-F3 (MEDIUM) AuditLog actorId=E-Mail** — Status siehe unten.
+
 ### Test-Lücken Auth (Block 1)
 - Kein „ohne Session → abgewiesen"-Test für `export-orders` + mutierende Server-Actions (`adminMark*`, `adminCancel/Refund`, `createManualOrder`, `adminUpdateInternalNote`). → Regressionstest `admin-action-auth.test.ts` ergänzen.
 
