@@ -81,7 +81,7 @@ export async function submitWithdrawal(formData: FormData) {
     redirect(`/widerruf-antrag/${parsed.data.token}?error=${eligibility.reason}`);
   }
 
-  const actor = { actorType: "customer" as const, actorId: order.customerEmail, ipAddress: ip };
+  const actor = { actorType: "customer" as const, actorId: order.id, ipAddress: ip };
   const result = await registerWithdrawal(order.id, { reason: parsed.data.reason }, actor);
 
   if (!result.skipped) {

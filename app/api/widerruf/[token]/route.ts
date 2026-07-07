@@ -67,7 +67,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
     return NextResponse.json({ error: eligibility.reason }, { status: 403 });
   }
 
-  const actor = { actorType: "customer" as const, actorId: order.customerEmail, ipAddress: ip };
+  const actor = { actorType: "customer" as const, actorId: order.id, ipAddress: ip };
   const result = await registerWithdrawal(order.id, { reason: body.reason }, actor);
 
   if (!result.skipped) {

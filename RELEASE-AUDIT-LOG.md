@@ -15,7 +15,7 @@
 | 1 | Auth & Zugriffskontrolle | ✅ VERIFIZIERT (sauber) — Test-Lücke offen |
 | 2 | Geld & Zahlungsfluss | ✅ F1 gefixt · F2/F3 dokumentiert |
 | 3 | Order-Lebenszyklus & Concurrency | 🔄 F1(HIGH) ✅ gefixt · F2/F3 offen |
-| 4 | Token-Routen & Datenschutz/PII | 🔄 Findings offen (HIGH) |
+| 4 | Token-Routen & Datenschutz/PII | ✅ F1-F4 gefixt (Trigger offen) |
 | 5 | Input-Validierung & Injection | ✅ Fixes erledigt |
 | 6 | UI-Flows E2E (Playwright) | ⏳ offen |
 | 7 | PDF-Generierung | ⏳ offen |
@@ -88,8 +88,8 @@
 ### 🔄 Block 4 — Datenschutz/PII (Fixes, teilweise)
 - **B4-F2 (HIGH) PaymentEvent-Payload minimiert:** `lib/services/stripe-redact.ts::redactStripeEvent` verwirft `customer_details`/E-Mail/Name/Adresse/Telefon VOR dem Persistieren; nur Debug-Felder (id/type/amount/payment_intent/metadata) bleiben. Webhook nutzt es (`route.ts`). Regressionstest `tests/stripe-redact.test.ts`.
 - **B4-F4 (LOW) Security-/Token-Header** (`next.config.mjs`): global Permissions-Policy, CSP `frame-ancestors/base-uri/form-action`, HSTS (prod-only); Token-Seiten (`bestellung/status`, `widerruf-antrag`, `api/invoice`, `api/widerruf`) mit `no-store`/`noindex`/`no-referrer`.
-- **B4-F1 (HIGH) Art. 17 Anonymisierung** — Status siehe unten.
-- **B4-F3 (MEDIUM) AuditLog actorId=E-Mail** — Status siehe unten.
+- **B4-F1 (HIGH) Art. 17 Anonymisierung — Service gebaut:** `lib/services/gdpr.ts::anonymizeCustomer` nullt Konto-PII (Name/Phone/Email→Platzhalter/passwordHash/Tokens/IP/companyName/vatId), löscht Adressbuch, widerruft Sessions, nullt Consent-IP/UA, entkoppelt Orders vom Konto (Rechnungsdaten bleiben für §147 AO/§257 HGB — Art. 17 Abs. 3 lit. b), setzt `deletedAt`+`anonymizedAt`, Audit `customer.anonymized`. Idempotent. Regressionstest `tests/gdpr.test.ts` (3 Tests: keine PII, Idempotenz, unbekannter Kunde). **Offen (MANUELLE SCHRITTE):** Admin-UI-Button + Self-Service-Trigger im Kundenkonto; Retention-Cron für Orders JENSEITS der 10-Jahres-Frist. Service ist einsatzbereit, nur die Auslöser fehlen.
+- **B4-F3 (MEDIUM) AuditLog actorId** — von Klartext-`customerEmail` auf `order.id` umgestellt (`widerruf/[token]/route.ts`, `withdrawal.ts`) → keine PII mehr im Audit-Actor.
 
 ### Test-Lücken Auth (Block 1)
 - Kein „ohne Session → abgewiesen"-Test für `export-orders` + mutierende Server-Actions (`adminMark*`, `adminCancel/Refund`, `createManualOrder`, `adminUpdateInternalNote`). → Regressionstest `admin-action-auth.test.ts` ergänzen.
