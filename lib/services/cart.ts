@@ -27,6 +27,7 @@ export interface ValidatedCartItem {
   productTitle: string;
   productImageUrl: string | null;
   productCategory: string | null;
+  categoryId: string | null;
   quantity: number;
   unitPriceCents: number;
   unitWeightGrams: number | null;
@@ -108,6 +109,7 @@ export async function validateCart(input: CartInput[]): Promise<ValidatedCart> {
       productTitle: p.name,
       productImageUrl: p.images[0] ?? null,
       productCategory: p.category?.name ?? null,
+      categoryId: p.categoryId ?? null,
       quantity: effectiveQty,
       unitPriceCents,
       unitWeightGrams: p.shippingWeightKg ? Math.round(p.shippingWeightKg * 1000) : null,

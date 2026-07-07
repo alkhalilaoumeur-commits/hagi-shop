@@ -114,6 +114,11 @@ export async function previewDiscountAction(rawInput: unknown): Promise<Discount
     subtotalCents: cart.subtotalCents,
     shippingCents,
     customerEmail: email,
+    items: cart.items.map((i) => ({
+      productId: i.productId,
+      categoryId: i.categoryId,
+      lineSubtotalCents: i.subtotalCents,
+    })),
   });
   return { result, subtotalCents: cart.subtotalCents, errors: cart.errors };
 }

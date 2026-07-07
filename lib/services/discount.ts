@@ -18,12 +18,41 @@ export interface DiscountRedeemed {
   snapshot: Prisma.InputJsonValue;
 }
 
+export interface DiscountLineItem {
+  productId: string | null;
+  categoryId: string | null;
+  lineSubtotalCents: number;
+}
+
 interface PreviewInput {
   code: string;
   subtotalCents: number;
   shippingCents: number;
   customerId?: string | null;
   customerEmail?: string | null;
+  /** Positionen des Warenkorbs — nötig, damit Produkt-/Kategorie-Ausschlüsse greifen. */
+  items?: DiscountLineItem[];
+}
+
+/**
+ * Rabattfähige Zwischensumme: schließt Positionen aus, deren Produkt-/Kategorie-ID
+ * in `excludedProductIds`/`excludedCategoryIds` steht. Ohne Ausschlüsse oder ohne
+ * Item-Liste = volle Zwischensumme (unverändertes Verhalten).
+ */
+function discountableSubtotal(
+  d: { excludedProductIds: string[]; excludedCategoryIds: string[] },
+  items: DiscountLineItem[] | undefined,
+  fallbackSubtotal: number,
+): number {
+  const hasExclusions = d.excludedProductIds.length > 0 || d.excludedCategoryIds.length > 0;
+  if (!hasExclusions || !items || items.length === 0) return fallbackSubtotal;
+  const excludedProducts = new Set(d.excludedProductIds);
+  const excludedCategories = new Set(d.excludedCategoryIds);
+  return items.reduce((sum, it) => {
+    if (it.productId && excludedProducts.has(it.productId)) return sum;
+    if (it.categoryId && excludedCategories.has(it.categoryId)) return sum;
+    return sum + it.lineSubtotalCents;
+  }, 0);
 }
 
 interface RedeemInput extends PreviewInput {
@@ -104,7 +133,8 @@ export async function previewDiscount(input: PreviewInput): Promise<DiscountResu
     }
   }
 
-  const { discountCents, appliesToShipping } = calcDiscount(d, input.subtotalCents, input.shippingCents);
+  const base = discountableSubtotal(d, input.items, input.subtotalCents);
+  const { discountCents, appliesToShipping } = calcDiscount(d, base, input.shippingCents);
   return { code, discountCents, appliesToShipping, description: d.description };
 }
 
@@ -172,7 +202,8 @@ export async function redeemDiscount(input: RedeemInput): Promise<DiscountRedeem
     });
   }
 
-  const { discountCents, appliesToShipping } = calcDiscount(d, input.subtotalCents, input.shippingCents);
+  const base = discountableSubtotal(d, input.items, input.subtotalCents);
+  const { discountCents, appliesToShipping } = calcDiscount(d, base, input.shippingCents);
 
   return {
     code,

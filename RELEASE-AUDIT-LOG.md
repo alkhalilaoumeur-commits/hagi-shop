@@ -13,7 +13,7 @@
 |---|---|---|
 | 0 | Bestandsaufnahme & Testbasis | ✅ ABGESCHLOSSEN |
 | 1 | Auth & Zugriffskontrolle | ✅ VERIFIZIERT (sauber) — Test-Lücke offen |
-| 2 | Geld & Zahlungsfluss | 🔄 Findings offen |
+| 2 | Geld & Zahlungsfluss | ✅ F1 gefixt · F2/F3 dokumentiert |
 | 3 | Order-Lebenszyklus & Concurrency | 🔄 F1(HIGH) ✅ gefixt · F2/F3 offen |
 | 4 | Token-Routen & Datenschutz/PII | 🔄 Findings offen (HIGH) |
 | 5 | Input-Validierung & Injection | ✅ Fixes erledigt |
@@ -78,6 +78,12 @@
 - **B5-F4 (INFO)** `escapeHtml()`-Helper in `lib/email/send.ts` auf `customerEmail`/`orderNumber` in Roh-HTML-Admin-Mail.
 - Verifikation: tsc sauber, 21 Files / 202 Tests grün.
 - SQL/Open-Redirect: bereits sauber (nur 1 parametrisierter `$queryRaw`, alle Redirect-Ziele aus ENV/relativ) — kein Fix nötig.
+
+### ✅ Block 2 — Geld & Zahlungsfluss (Fixes/Bewertung)
+- **B2-F1 (MEDIUM) Rabatt-Ausschlüsse behoben:** `discountableSubtotal()` in `lib/services/discount.ts` schließt Positionen mit ausgeschlossener Produkt-/Kategorie-ID aus der Rabattbasis aus. `ValidatedCartItem.categoryId` ergänzt (`cart.ts`), Items an `previewDiscount`/`redeemDiscount` durchgereicht (`cart.ts`, `order-create.ts`). Ohne Item-Liste = unverändert (Rückwärtskompatibilität). Regressionstest `tests/discount-exclusions.test.ts` (4 Tests). tsc sauber.
+- **B2-F2 (L-M) oncePerCustomer** — dokumentiert als Rest-Risiko: TOCTOU bei exakt parallelen gleicher-Email-Checkouts + prinzipiell per Wegwerf-Email umgehbar (systembedingt, da KEIN Account-Zwang). Globales `usageLimit` ist atomar geschützt. Härtung (Redemption-Tabelle mit `@@unique(code,email)`) → als Enhancement notiert, kein akuter Exploit.
+- **B2-F3 (LOW) Amount-Mismatch** — bewusst AKZEPTIERT: Der gezahlte Betrag entsteht aus der serverseitig gebauten Stripe-Session (Client kann Preis/Menge nicht manipulieren, verifiziert Block 2 Punkt 3). Ein echter Mismatch ist praktisch nur „Order nach Session verändert"; Blockieren würde legitime Orders riskieren. Bleibt als Audit-Log. Wird durch B3-F1-Fix (atomarer Claim) zusätzlich entschärft.
+- **`stackable`** — toter Flag by design (Order hat nur ein `discountCode`-Feld, kein Stacking möglich). Kein Fix nötig.
 
 ### Test-Lücken Auth (Block 1)
 - Kein „ohne Session → abgewiesen"-Test für `export-orders` + mutierende Server-Actions (`adminMark*`, `adminCancel/Refund`, `createManualOrder`, `adminUpdateInternalNote`). → Regressionstest `admin-action-auth.test.ts` ergänzen.

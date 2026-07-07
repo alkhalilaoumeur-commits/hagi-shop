@@ -142,6 +142,11 @@ export async function createDraftOrderAndStripeSession(
           subtotalCents: cart.subtotalCents,
           shippingCents,
           customerEmail: email,
+          items: cart.items.map((i) => ({
+            productId: i.productId,
+            categoryId: i.categoryId,
+            lineSubtotalCents: i.subtotalCents,
+          })),
           tx,
         });
         if (discountRedeemed.appliesToShipping) {
