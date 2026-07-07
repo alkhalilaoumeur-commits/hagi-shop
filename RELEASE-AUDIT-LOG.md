@@ -17,14 +17,14 @@
 | 3 | Order-Lebenszyklus & Concurrency | ✅ F1(HIGH)+F2 gefixt · F3/F4 dok. |
 | 4 | Token-Routen & Datenschutz/PII | ✅ F1-F4 gefixt (Trigger offen) |
 | 5 | Input-Validierung & Injection | ✅ Fixes erledigt |
-| 6 | UI-Flows E2E (Playwright) | ⏳ offen |
-| 7 | PDF-Generierung | ⏳ offen |
-| 8 | Rechtliche Vollständigkeit | ⏳ offen |
-| 9 | Infra, Secrets & Fehlerbehandlung | ⏳ offen |
-| 10 | Verifikation & Härtung | ⏳ offen |
+| 6 | UI-Flows E2E (Playwright) | ⏳ OFFEN (nächste Session) |
+| 7 | PDF-Generierung | ⏳ OFFEN (nächste Session) |
+| 8 | Rechtliche Vollständigkeit | ✅ GEPRÜFT (Freigabe/Platzhalter = Human-Task) |
+| 9 | Infra, Secrets & Fehlerbehandlung | ✅ Header gehärtet · npm audit = Manual |
+| 10 | Verifikation & Härtung | ✅ Lint+Docs erledigt · Playwright offen |
 
-**Aktueller Block:** Block 3-Fix in Arbeit (Unikat-Doppelverkauf) — parallele Verifikation Block 1-5 abgeschlossen.
-**Nächster offener Schritt:** Doppelverkauf-Fix (atomarer inStock-Flip im Webhook + Manual-Order) implementieren + Concurrency-Regressionstest.
+**Aktueller Block:** Blöcke 0–5 (Code-Security) + 8/9/10 (Prüfung/Härtung/Doku) abgeschlossen. Checkpoint gesetzt.
+**Nächster offener Schritt (nächste Session):** BLOCK 6 — Playwright installieren (`npm i -D @playwright/test && npx playwright install chromium`), dann E2E-Specs für Storefront-Kauf, Admin-Login/Lockout/Order-Aktionen, Widerruf-Flow schreiben, Screenshots nach `audit-artifacts/screenshots/`. Danach BLOCK 7 — tsx-Script schreibt Rechnung(B2C+B2B-Reverse-Charge)/Lieferschein/Widerruf-PDF nach `audit-artifacts/pdfs/` via `@react-pdf/renderer` (`lib/pdf/*`), auf §14-UStG-Vollständigkeit + Umlaute + Platzhalter prüfen.
 
 ---
 
@@ -133,3 +133,48 @@ Bereits behoben (im echten Code verifiziert, siehe Block 0/1):
 - Lokale Env-Backups aufräumen: `.env.cpgz`, `.env.new`, `.env.pre-stage4.bak` enthalten lokal echte Secrets (nicht in Git, aber unnötiges Risiko auf der Maschine). Löschen empfohlen.
 
 ---
+
+## BLOCK 8 — Rechtliche Vollständigkeit ✅ GEPRÜFT (Freigabe = Human-Task)
+
+Verifiziert durch Subagent (read-only, alle Belege mit Datei:Zeile). Struktur sauber gebaut, aber **nicht launchfähig** wegen Platzhaltern.
+
+- **Button-Lösung §312j BGB:** ✅ korrekt — `components/checkout/CheckoutForm.tsx:559` „Zahlungspflichtig bestellen"; Pflicht-Checkboxen AGB/DS/Widerruf erzwungen.
+- **Impressum §5 DDG:** ⚠️ nur Platzhalter (`app/impressum/page.tsx:11-13,21,26,30`), veraltete Normzitate (TMG→DDG, RStV→MStV).
+- **Widerrufsbelehrung:** 🔴 Zurückbehaltungs- + Wertverlust-Klausel FEHLEN (`app/widerruf/page.tsx`) — brisant, da Backend Wertersatz abzieht (§357a BGB). E-Mail-Inkonsistenz kontakt@ vs info@.
+- **Datenschutz:** ❌ Resend, Hetzner-Hosting, Google Fonts, Newsletter fehlen; Widerspruch zum Cookie-Banner (behauptet „kein Tracking", Banner bietet Plausible/Marketing).
+- **Google Fonts:** 🔴 `app/globals.css:5` lädt remote vor Einwilligung → Besucher-IP an Google (abmahnfähig, LG München I). Fix: self-hosten via `next/font`.
+- **Cookie-Banner:** ✅ vorhanden, Ablehnen gleichwertig; Plausible/Marketing-Kategorien aktuell Attrappen (kein Tracking eingebaut).
+
+## BLOCK 9 — Infra, Secrets & Fehlerbehandlung ✅ (Header gehärtet)
+
+- **Secrets:** ✅ Keine in Git (`git ls-files` → nur `.env.example`; `.env*`-Catch-all greift).
+- **Security-Header** (`next.config.mjs`): ✅ ergänzt — HSTS(Prod), Permissions-Policy, CSP `frame-ancestors`/`base-uri`/`form-action`; Token-Seiten `no-store`/`noindex`/`no-referrer`. X-Frame-Options/nosniff/Referrer-Policy waren bereits da.
+- **Fail-Fast:** ✅ Prod wirft bei fehlenden kritischen Env-Vars (`lib/config.ts` + dezentrale Modul-Checks).
+- **Catch-Blöcke:** verschluckende Catches sind bewusst (Enumeration-Schutz, optionaler Body, verify→false); Geld-/Auth-Pfade loggen/werfen konsequent.
+- **npm audit:** ⚠️ 4 high + 1 moderate, ALLE in Next.js 14.2.35 (= neueste 14.2.x). Nur via Major-Upgrade auf Next 15/16 lösbar (breaking) → MANUELLER Schritt. Config-Relevanz: kein i18n/CSP-Nonces/beforeInteractive → mehrere Advisories treffen NICHT zu; DoS/Cache-Poisoning durch Traefik/Cloudflare-Proxy teilentschärft.
+
+## BLOCK 10 — Verifikation & Härtung ✅ (Playwright offen)
+
+- **Lint-Prävention:** ✅ `.eslintrc.json` mit `@typescript-eslint/no-misused-promises` (checksConditionals) — verhindert dauerhaft die ursprüngliche CRITICAL-Bugklasse (async-Check ohne await). Adversarial verifiziert: Regel feuert bei Probe-Bug. `npm run lint` grün.
+- **Doku:** ✅ `SECURITY-CHECKLIST.md` (wiederverwendbar) + verbindliche Security-Regeln in `CLAUDE.md`.
+- **Test-Suite:** ✅ 25 Files / 222 Tests grün; `npx tsc --noEmit` sauber.
+- **Playwright-Red-Team + Coverage-Report:** ⏳ offen (Block 6).
+
+---
+
+## MANUELLE SCHRITTE (nicht autonom erledigbar)
+
+1. **Next.js-Upgrade** auf 15/16 planen + testen + redeployen (behebt die npm-audit-Highs; breaking, braucht volle App- + Build-Verifikation).
+2. **Anonymisierungs-Trigger bauen:** Admin-UI-Button + Kunden-Self-Service, die `anonymizeCustomer()` aufrufen; Retention-Cron für Orders jenseits der 10-Jahres-Frist.
+3. **Live-Stripe-Test:** echte Test-Order end-to-end (Checkout → Webhook → PAID → Mail) mit Stripe-CLI/Test-Keys; Oversold-Auto-Refund einmal real durchspielen.
+4. **Coolify-ENV:** alle Prod-Env-Vars setzen (`STRIPE_*`, `RESEND_API_KEY`, `CRON_SECRET`, `COMPANY_*` inkl. `COMPANY_PHONE`/`COMPANY_IBAN`, `NEXT_PUBLIC_APP_URL`, `TAX_MODE`), sonst Fail-Fast/Dummy-Werte in PDFs.
+5. **Infra:** Hetzner-Firewall auf Cloudflare-IP-Ranges beschränken (schließt `x-forwarded-for`-Spoofing des IP-Rate-Limits, B1-F1).
+6. **Lokale Env-Backups löschen:** `.env.cpgz`, `.env.new`, `.env.pre-stage4.bak` (nicht in Git, aber unnötiges lokales Secret-Risiko).
+7. **Google Fonts self-hosten** (`app/globals.css:5` → `next/font`) — DSGVO.
+
+## RECHTLICHE FREIGABE NÖTIG (Mensch mit IT-Recht)
+
+1. **Alle 4 Rechtstexte** (Impressum, Datenschutz, Widerruf, AGB) — Platzhalter durch echte Firmendaten ersetzen (Fundstellen siehe Block 8).
+2. **Widerrufsbelehrung** gegen amtliches Muster (Anlage 1/2 Art. 246a EGBGB): Zurückbehaltungs- + Wertverlust-Klausel ergänzen (sonst Wertersatz-Abzug rechtswidrig).
+3. **Datenschutzerklärung** neu: Resend, Hetzner, Google Fonts, Newsletter, Art. 77/21-Rechte; Widerspruch zum Cookie-Banner auflösen.
+4. **USt-Status** (Regelbesteuerung vs. §19 UStG) mit Steuerberater klären (`lib/shop-config.ts`).

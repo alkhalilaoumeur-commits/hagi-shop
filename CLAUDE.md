@@ -6,6 +6,22 @@
 
 ---
 
+## 🔒 Verbindliche Security-Regeln (jedes neue Feature MUSS sie einhalten)
+
+Abgeleitet aus dem Release-Audit (2026-07-07, siehe `RELEASE-AUDIT-LOG.md` + `SECURITY-CHECKLIST.md`):
+
+1. **Jede Route/Action unter `/admin` oder `/api/admin`** ruft als ERSTE Amtshandlung `requireAdmin()` (bzw. `await getCurrentAdmin()`-Check) auf — VOR jedem DB-Zugriff. Regressionstest „ohne Session → abgewiesen" ist Pflicht.
+2. **Async-Checks nie ohne `await`** in Bedingungen. Ein Promise ist immer truthy → der Guard wäre wirkungslos. Die ESLint-Regel `@typescript-eslint/no-misused-promises` (`.eslintrc.json`) erzwingt das — `npm run lint` muss grün sein.
+3. **Beträge (Preis/Menge/Versand/Rabatt) NUR serverseitig** aus der DB berechnen. Client-Input für Preise wird nie vertraut (nur `{productId, quantity}` akzeptieren).
+4. **Webhooks:** Signatur über den ROH-Body verifizieren BEVOR irgendetwas passiert; idempotent über `PaymentEvent.providerEventId @unique`. Payload vor Persistierung via `redactStripeEvent()` von PII befreien.
+5. **Refunds:** DB-Status `REFUNDED`/`PARTIALLY_REFUNDED` NUR setzen, wenn ein echter Provider-Refund lief (oder DB-only bei fehlendem PaymentIntent klar gekennzeichnet). Nie „erstattet" ohne Geldbewegung.
+6. **Unikat-Bestand (`isUnique`)** immer über `claimUniqueStock()` in DERSELBEN Transaktion wie die Statusänderung claimen (atomarer `updateMany` mit `inStock:true`-Guard) — nie read-then-write. Verhindert Doppelverkauf.
+7. **Keine PII in Logs** (keine ganzen E-Mails/Adressen in `console.*`, `AuditLog.actorId`, `ErrorLog`). Bei DSGVO-Löschung `anonymizeCustomer()` nutzen; Rechnungsdaten bleiben (§147 AO).
+8. **Jede öffentliche Route/Action:** Zod-Validierung mit Längenlimits (`.max()`) + Rate-Limit. User-Input nie ungescaped in HTML/JSON-LD rendern (`</script>` in JSON-LD escapen).
+9. **Neue Env-Var:** `.env.example` + Fail-Fast in Prod (`lib/config.ts` bzw. Modul-Level-Throw).
+
+---
+
 ## 🔴 TEST-PFLICHT (harte Regel)
 
 **Jede neue Funktion, jeder neue Workflow, jeder neue Endpoint bekommt zeitgleich einen Test.** Kein Commit ohne Test, kein Push ohne grünes `npm test`.
