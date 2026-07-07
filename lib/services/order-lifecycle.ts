@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 import { logAudit, type ActorType } from "./audit";
+import { logError } from "./error-log";
 import { releaseDiscount } from "./discount";
 import {
   sendShippingNotification,
@@ -281,9 +282,36 @@ export async function cancelOrder(
       refundedAt: refundCents > 0 ? new Date() : null,
     },
   });
-  // Zwischen Fetch und Update hat ein anderer Caller storniert/versandt → Skip.
+  // Zwischen Pre-Check und Update hat ein anderer Caller storniert/versandt → Skip.
   // (Der Stripe-Refund oben ist durch den Idempotency-Key gegen Doppelung geschützt.)
-  if (updated.count === 0) return { skipped: true };
+  if (updated.count === 0) {
+    // WICHTIG: Wenn oben bereits Geld erstattet wurde, darf das NICHT still
+    // verschluckt werden — sonst ist der Refund ohne DB-Beleg (B3-F2). Refund
+    // dokumentieren + Admin über ErrorLog/Audit alarmieren.
+    if (refundCents > 0) {
+      await prisma.refund
+        .create({ data: { orderId, amountCents: refundCents, reason: "cancellation_orphaned", stripeRefundId } })
+        .catch(() => {});
+      await logError({
+        source: "lib/services/order-lifecycle",
+        error: new Error(
+          `ORPHANED_REFUND: Order ${order.orderNumber} — Refund ${refundCents} Cent ausgelöst, aber Storno-Guard blockierte (paralleler Versand/Storno). Manuelle Prüfung nötig.`,
+        ),
+        context: { op: "cancel_orphaned_refund", orderId, refundCents, stripeRefundId },
+      });
+      await logAudit({
+        actorType: actor.actorType,
+        actorId: actor.actorId,
+        action: "order.refund_orphaned",
+        entityType: "Order",
+        entityId: orderId,
+        after: { refundCents, stripeRefundId },
+        ipAddress: actor.ipAddress,
+        userAgent: actor.userAgent,
+      });
+    }
+    return { skipped: true };
+  }
 
   // Refund-Beleg nur, wenn tatsächlich erstattet wurde.
   if (refundCents > 0) {

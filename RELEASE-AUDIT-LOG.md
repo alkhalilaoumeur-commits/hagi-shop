@@ -14,7 +14,7 @@
 | 0 | Bestandsaufnahme & Testbasis | ✅ ABGESCHLOSSEN |
 | 1 | Auth & Zugriffskontrolle | ✅ VERIFIZIERT (sauber) — Test-Lücke offen |
 | 2 | Geld & Zahlungsfluss | ✅ F1 gefixt · F2/F3 dokumentiert |
-| 3 | Order-Lebenszyklus & Concurrency | 🔄 F1(HIGH) ✅ gefixt · F2/F3 offen |
+| 3 | Order-Lebenszyklus & Concurrency | ✅ F1(HIGH)+F2 gefixt · F3/F4 dok. |
 | 4 | Token-Routen & Datenschutz/PII | ✅ F1-F4 gefixt (Trigger offen) |
 | 5 | Input-Validierung & Injection | ✅ Fixes erledigt |
 | 6 | UI-Flows E2E (Playwright) | ⏳ offen |
@@ -70,6 +70,11 @@
 - **Regressionstest:** `tests/stock-concurrency.test.ts` (4 Tests, u.a. 3 PARALLELE Claims → genau 1 gewinnt). Vorher gab es diesen Schutz nicht → wäre rot gewesen.
 - **Verifikation:** `npx tsc --noEmit` sauber; volle Suite 20 Files / 200 Tests grün.
 - **Rest-Enhancement (nicht Security):** Online-Checkout reserviert weiterhin nicht schon bei Session-Erstellung (nur Safety-Net beim Payment via Auto-Refund). Optionale Reservierung-bei-Checkout = UX-Verbesserung, in Block 10 als Enhancement notiert. Admin-Alert bei Oversold aktuell via ErrorLog/Audit; dedizierte E-Mail wäre nice-to-have.
+
+### ✅ B3-F2 (MEDIUM) — Verwaister Refund bei cancelOrder-Race
+- **Vorher:** Stripe-Refund läuft VOR dem WHERE-Guard-`updateMany`. Bei `count===0` (paralleler Versand zwischen Pre-Check und Update) wurde still `skipped` zurückgegeben → Geld erstattet, aber KEIN `Refund`-Record, Order-Status unverändert.
+- **Fix** (`lib/services/order-lifecycle.ts`): Bei `count===0` UND bereits erfolgtem Refund (`refundCents>0`) wird jetzt ein `Refund`-Beleg (`reason: cancellation_orphaned`) angelegt + `logError` (Admin-Sicht) + Audit `order.refund_orphaned` — statt stillem Skip. Stripe-Idempotency-Key verhindert weiterhin Doppel-Refund.
+- Verifikation: tsc sauber, 222 Tests grün. Deterministischer Race-Test = Enhancement (schwer reproduzierbar); Kern-Invariante „kein Refund ohne DB-Beleg" ist jetzt erfüllt.
 
 ### ✅ Block 5 — Input-Validierung & Injection (Fixes)
 - **B5-F1 (MEDIUM, public)** JSON-LD Stored XSS: `JSON.stringify(jsonLd).replace(/</g,"<")` in `app/produkte/[slug]/page.tsx` → `</script>`-Breakout unmöglich. Regressionstest `tests/xss-escaping.test.ts`.
