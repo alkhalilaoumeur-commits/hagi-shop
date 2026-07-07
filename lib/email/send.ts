@@ -18,6 +18,16 @@ import {
 } from "./templates";
 import { SHOP_NAME } from "./shared";
 
+/** Escaped Werte, die in roh interpolierte HTML-Mails eingesetzt werden (Defense-in-Depth gegen HTML-Injection). */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 let _resend: Resend | null = null;
 
 function getResend(): Resend {
@@ -165,8 +175,8 @@ export async function sendRefundReminderToAdmin(opts: {
       const open = ((r.totalCents - r.refundedCents) / 100).toFixed(2);
       const returnStatus = r.returnReceivedAt ? "✓ Ware retour" : "✗ Ware noch nicht da";
       return `<tr>
-        <td style="padding:8px 12px;border-bottom:1px solid #E5DCC8"><a href="${url}" style="color:#A33B2A">${r.orderNumber}</a></td>
-        <td style="padding:8px 12px;border-bottom:1px solid #E5DCC8;font-family:monospace">${r.customerEmail}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #E5DCC8"><a href="${url}" style="color:#A33B2A">${escapeHtml(r.orderNumber)}</a></td>
+        <td style="padding:8px 12px;border-bottom:1px solid #E5DCC8;font-family:monospace">${escapeHtml(r.customerEmail)}</td>
         <td style="padding:8px 12px;border-bottom:1px solid #E5DCC8;text-align:right">${r.daysSinceWithdrawal}d</td>
         <td style="padding:8px 12px;border-bottom:1px solid #E5DCC8;text-align:right">${r.daysRemaining}d</td>
         <td style="padding:8px 12px;border-bottom:1px solid #E5DCC8;text-align:right">${open}€</td>

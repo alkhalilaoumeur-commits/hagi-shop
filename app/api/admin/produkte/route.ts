@@ -7,16 +7,16 @@ import { logError } from "@/lib/services/error-log";
 
 const ProductSchema = z.object({
   name: z.string().min(2).max(200),
-  description: z.string().optional(),
+  description: z.string().max(5000).optional(),
   price: z.number().int().positive(),
   comparePrice: z.number().int().positive().optional(),
-  images: z.array(z.string().url()).default([]),
-  categoryId: z.string(),
+  images: z.array(z.string().url()).max(20).default([]),
+  categoryId: z.string().min(1).max(128),
   sizeWidth: z.number().positive().optional(),
   sizeLength: z.number().positive().optional(),
-  origin: z.string().optional(),
-  material: z.string().optional(),
-  pattern: z.string().optional(),
+  origin: z.string().max(120).optional(),
+  material: z.string().max(120).optional(),
+  pattern: z.string().max(120).optional(),
   inStock: z.boolean().default(true),
   featured: z.boolean().default(false),
 });

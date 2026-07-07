@@ -7,16 +7,16 @@ import { logError } from "@/lib/services/error-log";
 
 const UpdateSchema = z.object({
   name: z.string().min(2).max(200).optional(),
-  description: z.string().optional(),
+  description: z.string().max(5000).nullable().optional(),
   price: z.number().int().positive().optional(),
   comparePrice: z.number().int().positive().nullable().optional(),
-  images: z.array(z.string()).optional(),
-  categoryId: z.string().optional(),
+  images: z.array(z.string().url()).max(20).optional(),
+  categoryId: z.string().min(1).max(128).optional(),
   sizeWidth: z.number().positive().nullable().optional(),
   sizeLength: z.number().positive().nullable().optional(),
-  origin: z.string().nullable().optional(),
-  material: z.string().nullable().optional(),
-  pattern: z.string().nullable().optional(),
+  origin: z.string().max(120).nullable().optional(),
+  material: z.string().max(120).nullable().optional(),
+  pattern: z.string().max(120).nullable().optional(),
   inStock: z.boolean().optional(),
   featured: z.boolean().optional(),
 });

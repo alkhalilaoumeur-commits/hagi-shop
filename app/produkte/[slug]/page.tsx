@@ -96,7 +96,7 @@ export default async function ProductDetailPage({ params }: Props) {
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
 
       <div style={{ background: "#FAFAF7" }} className="pt-32 pb-12">
         <div className="max-w-page mx-auto px-6 md:px-12">

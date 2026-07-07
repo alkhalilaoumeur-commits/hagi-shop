@@ -16,7 +16,7 @@
 | 2 | Geld & Zahlungsfluss | 🔄 Findings offen |
 | 3 | Order-Lebenszyklus & Concurrency | 🔄 F1(HIGH) ✅ gefixt · F2/F3 offen |
 | 4 | Token-Routen & Datenschutz/PII | 🔄 Findings offen (HIGH) |
-| 5 | Input-Validierung & Injection | 🔄 Findings offen |
+| 5 | Input-Validierung & Injection | ✅ Fixes erledigt |
 | 6 | UI-Flows E2E (Playwright) | ⏳ offen |
 | 7 | PDF-Generierung | ⏳ offen |
 | 8 | Rechtliche Vollständigkeit | ⏳ offen |
@@ -70,6 +70,14 @@
 - **Regressionstest:** `tests/stock-concurrency.test.ts` (4 Tests, u.a. 3 PARALLELE Claims → genau 1 gewinnt). Vorher gab es diesen Schutz nicht → wäre rot gewesen.
 - **Verifikation:** `npx tsc --noEmit` sauber; volle Suite 20 Files / 200 Tests grün.
 - **Rest-Enhancement (nicht Security):** Online-Checkout reserviert weiterhin nicht schon bei Session-Erstellung (nur Safety-Net beim Payment via Auto-Refund). Optionale Reservierung-bei-Checkout = UX-Verbesserung, in Block 10 als Enhancement notiert. Admin-Alert bei Oversold aktuell via ErrorLog/Audit; dedizierte E-Mail wäre nice-to-have.
+
+### ✅ Block 5 — Input-Validierung & Injection (Fixes)
+- **B5-F1 (MEDIUM, public)** JSON-LD Stored XSS: `JSON.stringify(jsonLd).replace(/</g,"<")` in `app/produkte/[slug]/page.tsx` → `</script>`-Breakout unmöglich. Regressionstest `tests/xss-escaping.test.ts`.
+- **B5-F2 (LOW)** Kategorien-POST: Zod-Schema (`name` trim/min1/max100) + try/catch um `req.json()` → kein 500 mehr bei Nicht-String (`app/api/admin/kategorien/route.ts`).
+- **B5-F3 (LOW)** Produkt-Schemas: `.max()`-Limits auf description(5000)/origin/material/pattern/categoryId(120), `images: z.array(z.string().url()).max(20)` in BEIDEN Schemas (PATCH hatte kein `.url()`).
+- **B5-F4 (INFO)** `escapeHtml()`-Helper in `lib/email/send.ts` auf `customerEmail`/`orderNumber` in Roh-HTML-Admin-Mail.
+- Verifikation: tsc sauber, 21 Files / 202 Tests grün.
+- SQL/Open-Redirect: bereits sauber (nur 1 parametrisierter `$queryRaw`, alle Redirect-Ziele aus ENV/relativ) — kein Fix nötig.
 
 ### Test-Lücken Auth (Block 1)
 - Kein „ohne Session → abgewiesen"-Test für `export-orders` + mutierende Server-Actions (`adminMark*`, `adminCancel/Refund`, `createManualOrder`, `adminUpdateInternalNote`). → Regressionstest `admin-action-auth.test.ts` ergänzen.
