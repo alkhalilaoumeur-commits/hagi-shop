@@ -17,14 +17,29 @@
 | 3 | Order-Lebenszyklus & Concurrency | ✅ F1(HIGH)+F2 gefixt · F3/F4 dok. |
 | 4 | Token-Routen & Datenschutz/PII | ✅ F1-F4 gefixt (Trigger offen) |
 | 5 | Input-Validierung & Injection | ✅ Fixes erledigt |
-| 6 | UI-Flows E2E (Playwright) | ⏳ OFFEN (nächste Session) |
+| 6 | UI-Flows E2E (Playwright) | ✅ ABGESCHLOSSEN — 16/16 grün, 17 Screenshots |
 | 7 | PDF-Generierung | ⏳ OFFEN (nächste Session) |
 | 8 | Rechtliche Vollständigkeit | ✅ GEPRÜFT (Freigabe/Platzhalter = Human-Task) |
 | 9 | Infra, Secrets & Fehlerbehandlung | ✅ Header gehärtet · npm audit = Manual |
 | 10 | Verifikation & Härtung | ✅ Lint+Docs erledigt · Playwright offen |
 
-**Aktueller Block:** Blöcke 0–5 (Code-Security) + 8/9/10 (Prüfung/Härtung/Doku) abgeschlossen. Checkpoint gesetzt.
-**Nächster offener Schritt (nächste Session):** BLOCK 6 — Playwright installieren (`npm i -D @playwright/test && npx playwright install chromium`), dann E2E-Specs für Storefront-Kauf, Admin-Login/Lockout/Order-Aktionen, Widerruf-Flow schreiben, Screenshots nach `audit-artifacts/screenshots/`. Danach BLOCK 7 — tsx-Script schreibt Rechnung(B2C+B2B-Reverse-Charge)/Lieferschein/Widerruf-PDF nach `audit-artifacts/pdfs/` via `@react-pdf/renderer` (`lib/pdf/*`), auf §14-UStG-Vollständigkeit + Umlaute + Platzhalter prüfen.
+**Aktueller Block:** Blöcke 0–6 + 8/9/10 abgeschlossen.
+**Nächster offener Schritt:** BLOCK 7 — tsx-Script schreibt Rechnung (B2C + B2B-Reverse-Charge) / Lieferschein / Widerruf-PDF nach `audit-artifacts/pdfs/` via `@react-pdf/renderer` (`lib/pdf/*`), auf §14-UStG-Vollständigkeit + Umlaute + Platzhalter prüfen.
+
+## BLOCK 6 — UI-Flows E2E (Playwright) ✅ ABGESCHLOSSEN (2026-07-08)
+
+**Playwright 1.61.1 installiert, Chromium-Browser bereit.**
+
+### Specs (alle 16 Tests grün, 38s)
+- `e2e/storefront.spec.ts` (6 Tests): Homepage, Produktliste, Produktdetail, Add-to-Cart, Warenkorb, Checkout-Seite
+- `e2e/admin-auth.spec.ts` (5 Tests): Login-Seite, Falsches PW → Fehlermeldung, Korrektes Login → Dashboard (mit 2FA-Bypass wenn nicht eingerichtet), Account-Lockout nach 5 Fehlversuchen verifiziert, Redirect ohne Session
+- `e2e/widerruf.spec.ts` (5 Tests): Belehrungs-Seite, Lookup-Formular sichtbar, Ungültige Bestellnr. → kein Crash, PDF-Endpunkt liefert 200, Tracking-Seite mit ungültigem Token
+
+### Screenshots (17 Stk. in `audit-artifacts/screenshots/`)
+01-homepage · 02-produktliste · 03-produktdetail · 04-nach-add-to-cart · 05-warenkorb · 06-checkout · 07-admin-login-leer · 08-admin-login-fehler · 09-admin-dashboard · 10-admin-lockout · 11-admin-lockout-bestaetigt · 12-admin-redirect-ohne-session · 13-widerruf-belehrung · 14-widerruf-antrag-leer · 15-widerruf-antrag-ungueltig · 16-widerrufsformular-pdf-ok · 17-tracking-ungueltig
+
+### Befund
+Keine Crashes, keine unerwarteten 500-Fehler. Admin-Lockout nach 5 Versuchen bestätigt — Richtigpasswort nach Lock weiterhin abgewiesen. Redirect `/admin` → `/admin/login` ohne Session funktioniert.
 
 ---
 
