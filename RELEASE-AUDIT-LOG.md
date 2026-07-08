@@ -18,13 +18,13 @@
 | 4 | Token-Routen & Datenschutz/PII | ✅ F1-F4 gefixt (Trigger offen) |
 | 5 | Input-Validierung & Injection | ✅ Fixes erledigt |
 | 6 | UI-Flows E2E (Playwright) | ✅ ABGESCHLOSSEN — 16/16 grün, 17 Screenshots |
-| 7 | PDF-Generierung | ⏳ OFFEN (nächste Session) |
+| 7 | PDF-Generierung | ✅ ABGESCHLOSSEN — 35/39 Checks, 4 Platzhalter-Warnungen (kein Code-Bug) |
 | 8 | Rechtliche Vollständigkeit | ✅ GEPRÜFT (Freigabe/Platzhalter = Human-Task) |
 | 9 | Infra, Secrets & Fehlerbehandlung | ✅ Header gehärtet · npm audit = Manual |
 | 10 | Verifikation & Härtung | ✅ Lint+Docs erledigt · Playwright offen |
 
-**Aktueller Block:** Blöcke 0–6 + 8/9/10 abgeschlossen.
-**Nächster offener Schritt:** BLOCK 7 — tsx-Script schreibt Rechnung (B2C + B2B-Reverse-Charge) / Lieferschein / Widerruf-PDF nach `audit-artifacts/pdfs/` via `@react-pdf/renderer` (`lib/pdf/*`), auf §14-UStG-Vollständigkeit + Umlaute + Platzhalter prüfen.
+**Aktueller Block:** Blöcke 0–10 vollständig abgeschlossen. Audit abgeschlossen.
+**Offene Punkte:** Nur noch manuelle Human-Tasks (Platzhalter in `.env`, Rechtstexte, Stripe-CLI-Test). Siehe MANUELLE SCHRITTE unten.
 
 ## BLOCK 6 — UI-Flows E2E (Playwright) ✅ ABGESCHLOSSEN (2026-07-08)
 
@@ -193,3 +193,26 @@ Verifiziert durch Subagent (read-only, alle Belege mit Datei:Zeile). Struktur sa
 2. **Widerrufsbelehrung** gegen amtliches Muster (Anlage 1/2 Art. 246a EGBGB): Zurückbehaltungs- + Wertverlust-Klausel ergänzen (sonst Wertersatz-Abzug rechtswidrig).
 3. **Datenschutzerklärung** neu: Resend, Hetzner, Google Fonts, Newsletter, Art. 77/21-Rechte; Widerspruch zum Cookie-Banner auflösen.
 4. **USt-Status** (Regelbesteuerung vs. §19 UStG) mit Steuerberater klären (`lib/shop-config.ts`).
+
+## BLOCK 7 — PDF-Generierung ✅ ABGESCHLOSSEN (2026-07-08)
+
+**Script:** `scripts/pdf-audit.ts` — generiert alle PDF-Typen, extrahiert Text via `pdftotext`, prüft 39 Checks.
+
+### Ergebnis: 35/39 OK · 4 Platzhalter-Warnungen
+
+| PDF | Ergebnis | Bytes |
+|---|---|---|
+| Rechnung B2C (§19 UStG Kleinunternehmer) | ⚠️ 12/14 (2 Platzhalter) | 4 113 |
+| Rechnung B2B (Reverse Charge §13b UStG) | ⚠️ 12/14 (2 Platzhalter) | 4 353 |
+| Lieferschein | ✅ 5/5 | 3 485 |
+| Widerrufsformular (EGBGB Anlage 2) | ✅ 6/6 | 5 817 |
+
+### §14 UStG Pflichtangaben — alle vorhanden ✓
+Firma + Adresse, Kundendaten, Steuernummer/USt-ID, Datum, Rechnungsnummer, Warenbezeichnung, Betrag, §19-Hinweis (B2C), §13b-Hinweis (B2B), Umlauts korrekt.
+
+### Platzhalter-Warnungen (kein Code-Bug — Env-Werte ersetzen)
+- `COMPANY_TAX_NUMBER=00000/00000` → echte Steuernummer in Coolify/Vercel eintragen
+- `COMPANY_IBAN=DE00000000000000000000` → echte IBAN in Coolify/Vercel eintragen
+
+### PDFs in `audit-artifacts/pdfs/`
+`invoice-b2c.pdf` · `invoice-b2b-reverse-charge.pdf` · `lieferschein.pdf` · `widerrufsformular.pdf` · `pdf-audit-report.txt`

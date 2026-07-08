@@ -1,0 +1,58 @@
+PDF-AUDIT-REPORT — Block 7 (Hagi-Shop Release-Audit 2026-07-08)
+============================================================
+
+⚠️  Rechnung B2C (Kleinunternehmer §19 UStG) (4113 Bytes → invoice-b2c.pdf)
+  ✓ Datei nicht leer (Render-Crash?) — 4113 Bytes
+  ✓ §14 Nr.1: Firma des Leistenden vorhanden
+  ✓ §14 Nr.1: Straße des Leistenden vorhanden
+  ✓ §14 Nr.1: Stadt des Leistenden vorhanden
+  ✓ §14 Nr.2: Kundenname vorhanden
+  ✓ §14 Nr.3: Steuernummer oder USt-ID vorhanden
+  ✓ §14 Nr.4: Rechnungsdatum vorhanden
+  ✓ §14 Nr.5: Rechnungsnummer vorhanden
+  ✓ §14 Nr.6: Warenbezeichnung vorhanden
+  ✓ §14 Nr.10: Rechnungsendbetrag vorhanden
+  ✓ §19 UStG Kleinunternehmer-Hinweis vorhanden
+  ✗ WARNUNG: Platzhalter-Steuernummer (00000/00000) — ⚠️  Steuernummer muss vor Live-Gang ersetzt werden
+  ✗ WARNUNG: Platzhalter-IBAN — ⚠️  IBAN muss vor Live-Gang ersetzt werden
+  ✓ Umlauts korrekt: ä/ö/ü/ß korrekt extrahiert (kein Encoding-Bruch)
+
+⚠️  Rechnung B2B (Reverse Charge §13b UStG) (4353 Bytes → invoice-b2b-reverse-charge.pdf)
+  ✓ Datei nicht leer (Render-Crash?) — 4353 Bytes
+  ✓ §14 Nr.1: Firma des Leistenden vorhanden
+  ✓ §14 Nr.1: Straße des Leistenden vorhanden
+  ✓ §14 Nr.1: Stadt des Leistenden vorhanden
+  ✓ §14 Nr.2: Kundenname vorhanden
+  ✓ §14 Nr.3: Steuernummer oder USt-ID vorhanden
+  ✓ §14 Nr.4: Rechnungsdatum vorhanden
+  ✓ §14 Nr.5: Rechnungsnummer vorhanden
+  ✓ §14 Nr.6: Warenbezeichnung vorhanden
+  ✓ §14 Nr.10: Rechnungsendbetrag vorhanden
+  ✓ §13b UStG Reverse-Charge-Hinweis vorhanden
+  ✗ WARNUNG: Platzhalter-Steuernummer (00000/00000) — ⚠️  Steuernummer muss vor Live-Gang ersetzt werden
+  ✗ WARNUNG: Platzhalter-IBAN — ⚠️  IBAN muss vor Live-Gang ersetzt werden
+  ✓ Umlauts korrekt: ä/ö/ü/ß korrekt extrahiert (kein Encoding-Bruch)
+
+✅ Lieferschein (3485 Bytes → lieferschein.pdf)
+  ✓ Datei nicht leer — 3485 Bytes
+  ✓ Kundenname vorhanden
+  ✓ Warenbezeichnung vorhanden
+  ✓ Bestellnummer vorhanden
+  ✓ Lieferadresse vorhanden
+
+✅ Muster-Widerrufsformular (EGBGB Anlage 2) (5817 Bytes → widerrufsformular.pdf)
+  ✓ Datei nicht leer — 5817 Bytes
+  ✓ Empfänger-Name vorhanden
+  ✓ EGBGB Anlage 2 Referenz vorhanden
+  ✓ Widerruf-Wort vorhanden
+  ✓ 14-Tage-Frist erwähnt
+  ✓ Kontaktdaten (E-Mail) vorhanden
+
+============================================================
+GESAMT: 35 OK · 4 FAIL
+
+HANDLUNGSBEDARF vor Live-Gang:
+  • [Rechnung B2C (Kleinunternehmer §19 UStG)] FAIL: WARNUNG: Platzhalter-Steuernummer (00000/00000) — ⚠️  Steuernummer muss vor Live-Gang ersetzt werden
+  • [Rechnung B2C (Kleinunternehmer §19 UStG)] FAIL: WARNUNG: Platzhalter-IBAN — ⚠️  IBAN muss vor Live-Gang ersetzt werden
+  • [Rechnung B2B (Reverse Charge §13b UStG)] FAIL: WARNUNG: Platzhalter-Steuernummer (00000/00000) — ⚠️  Steuernummer muss vor Live-Gang ersetzt werden
+  • [Rechnung B2B (Reverse Charge §13b UStG)] FAIL: WARNUNG: Platzhalter-IBAN — ⚠️  IBAN muss vor Live-Gang ersetzt werden
