@@ -17,8 +17,7 @@ import { execSync } from "child_process";
 import { renderToBuffer } from "@react-pdf/renderer";
 import * as React from "react";
 
-// Env-Variablen für den Audit vorladen (Dev-Defaults, NODE_ENV=development)
-process.env.NODE_ENV = process.env.NODE_ENV ?? "development";
+// Env-Variablen für den Audit vorladen (Dev-Defaults)
 process.env.TAX_MODE = process.env.TAX_MODE ?? "small_business";
 process.env.COMPANY_NAME = process.env.COMPANY_NAME || "Hagi Teppiche";
 process.env.COMPANY_STREET = process.env.COMPANY_STREET || "Egilolfstraße 41";
